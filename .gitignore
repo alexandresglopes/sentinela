@@ -1,0 +1,4 @@
+node_modules/
+.env
+gerar-senha.js
+teste-map.html
