@@ -1936,3 +1936,31 @@ img {
 .mini-row--clickable:active {
   transform: translateY(0);
 }
+
+.brand__logo {
+  width: 28px;
+  height: 28px;
+  object-fit: contain;
+  display: none;
+}
+
+.footer__brand .brand__logo {
+  width: 24px;
+  height: 24px;
+}
+
+[data-theme="dark"] .brand__logo--dark {
+  display: block;
+}
+
+[data-theme="dark"] .brand__logo--light {
+  display: none;
+}
+
+[data-theme="light"] .brand__logo--light {
+  display: block;
+}
+
+[data-theme="light"] .brand__logo--dark {
+  display: none;
+}

@@ -70,6 +70,14 @@
   const $ = (sel, ctx = document) => ctx.querySelector(sel);
   const $$ = (sel, ctx = document) => Array.from(ctx.querySelectorAll(sel));
 
+  function atualizarFavicon() {
+    const theme = document.documentElement.getAttribute("data-theme");
+    const favicon = document.getElementById("favicon");
+    if (favicon) {
+      favicon.href = theme === "dark" ? "/img/logo_noite.png" : "/img/logo_dia.png";
+    }
+  }
+
   function icon(name, size = 20) {
     const s = `width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"`;
     const paths = {
@@ -108,15 +116,32 @@
     const prefersLight = window.matchMedia("(prefers-color-scheme: light)").matches;
     const theme = saved || (prefersLight ? "light" : "dark");
     document.documentElement.setAttribute("data-theme", theme);
+    atualizarFavicon();
 
     $("#theme-toggle").addEventListener("click", () => {
       const current = document.documentElement.getAttribute("data-theme");
       const next = current === "dark" ? "light" : "dark";
       document.documentElement.setAttribute("data-theme", next);
       localStorage.setItem("sentinela-theme", next);
+      atualizarFavicon();
       if (window.__sentinelaMap) applyMapTheme();
     });
   }
+
+  // function initTheme() {
+  //   const saved = localStorage.getItem("sentinela-theme");
+  //   const prefersLight = window.matchMedia("(prefers-color-scheme: light)").matches;
+  //   const theme = saved || (prefersLight ? "light" : "dark");
+  //   document.documentElement.setAttribute("data-theme", theme);
+
+  //   $("#theme-toggle").addEventListener("click", () => {
+  //     const current = document.documentElement.getAttribute("data-theme");
+  //     const next = current === "dark" ? "light" : "dark";
+  //     document.documentElement.setAttribute("data-theme", next);
+  //     localStorage.setItem("sentinela-theme", next);
+  //     if (window.__sentinelaMap) applyMapTheme();
+  //   });
+  // }
 
   function initMobileNav() {
     const toggle = $("#nav-toggle");
@@ -1238,7 +1263,7 @@
     }
   }
 
-    async function initMapa() {
+  async function initMapa() {
     const DATA = window.SENTINELA_DATA;
     if (!DATA) {
       setTimeout(initMapa, 500);
@@ -1279,16 +1304,16 @@
       // Verifica se há uma ocorrência para destacar
       const params = new URLSearchParams(window.location.hash.split("?")[1] || "");
       const ocorrenciaId = params.get("ocorrencia");
-      
+
       if (ocorrenciaId) {
         const id = parseInt(ocorrenciaId);
         const ocorrencia = DATA.ocorrencias.find(o => o.id === id);
-        
+
         if (ocorrencia) {
           // Centraliza no marcador
           map.panTo({ lat: ocorrencia.lat, lng: ocorrencia.lng });
           map.setZoom(16);
-          
+
           // Encontra e clica no marcador após um pequeno delay
           setTimeout(() => {
             const marker = mapMarkers.find(m => m._occId === id);
@@ -2076,7 +2101,7 @@
     document.removeEventListener("keydown", handleEscEmergencia);
   }
 
-    function init() {
+  function init() {
     initTheme();
     initMobileNav();
     initEmergencia();
