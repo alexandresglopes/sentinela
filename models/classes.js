@@ -198,12 +198,12 @@ class Confirmacao {
 
     static async registrar(data) {
         const { ocorrencia_id, tipo_confirmacao, token_usuario } = data;
-        
+
         const [existe] = await conexaoPromise.query(
             "SELECT id FROM confirmacoes_ocorrencias WHERE ocorrencia_id = ? AND token_usuario = ?",
             [ocorrencia_id, token_usuario]
         );
-        
+
         if (existe.length > 0) {
             return { sucesso: false, mensagem: "Você já registrou sua opinião sobre esta ocorrência" };
         }
@@ -212,13 +212,13 @@ class Confirmacao {
             "INSERT INTO confirmacoes_ocorrencias (ocorrencia_id, tipo_confirmacao, token_usuario) VALUES (?, ?, ?)",
             [ocorrencia_id, tipo_confirmacao, token_usuario]
         );
-        
+
         return { sucesso: true, id: result.insertId };
     }
 
     static async getEstatisticasMultiples(ocorrenciaIds) {
         if (!ocorrenciaIds || ocorrenciaIds.length === 0) return {};
-        
+
         const placeholders = ocorrenciaIds.map(() => '?').join(',');
         const [rows] = await conexaoPromise.query(`
             SELECT 
@@ -229,7 +229,7 @@ class Confirmacao {
             WHERE ocorrencia_id IN (${placeholders})
             GROUP BY ocorrencia_id
         `, ocorrenciaIds);
-        
+
         const resultado = {};
         rows.forEach(r => {
             resultado[r.ocorrencia_id] = {
@@ -284,6 +284,25 @@ async function getDadosMapa() {
     };
 }
 
+class Timeline {
+    static async getByDenunciaId(denunciaId) {
+        const [rows] = await conexaoPromise.query(
+            "SELECT * FROM timeline WHERE denuncia_id = ? ORDER BY created_at ASC",
+            [denunciaId]
+        );
+        return rows;
+    }
+
+    static async registrar(data) {
+        const { denuncia_id, evento, autor } = data;
+        const [result] = await conexaoPromise.query(
+            "INSERT INTO timeline (denuncia_id, evento, autor) VALUES (?, ?, ?)",
+            [denuncia_id, evento, autor || 'Sistema']
+        );
+        return result.insertId;
+    }
+}
+
 module.exports = {
     TipoOcorrencia,
     Severidade,
@@ -292,5 +311,6 @@ module.exports = {
     MensagemChat,
     Investigador,
     Confirmacao,
+    Timeline,
     getDadosMapa
 };

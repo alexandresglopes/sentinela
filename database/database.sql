@@ -92,6 +92,16 @@ CREATE TABLE `confirmacoes_ocorrencias` (
   CONSTRAINT `confirmacoes_ocorrencias_ibfk_1` FOREIGN KEY (`ocorrencia_id`) REFERENCES `ocorrencias` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE IF NOT EXISTS timeline (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    denuncia_id INT NOT NULL,
+    evento VARCHAR(100) NOT NULL,
+    autor VARCHAR(50) DEFAULT 'Sistema',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (denuncia_id) REFERENCES denuncias(id) ON DELETE CASCADE,
+    INDEX idx_denuncia (denuncia_id)
+);
+
 
 INSERT INTO tipos_ocorrencia (nome) VALUES
 ('Furto'),

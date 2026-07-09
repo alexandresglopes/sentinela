@@ -78,7 +78,7 @@ const server = http.createServer(async (req, res) => {
 
   if (pathname.startsWith("/api/")) {
     try {
-      const { getDadosMapa, TipoOcorrencia, Ocorrencia, Denuncia, MensagemChat, Investigador, Confirmacao } = require("./models/classes");
+      const { getDadosMapa, TipoOcorrencia, Ocorrencia, Denuncia, MensagemChat, Investigador, Confirmacao, Timeline } = require("./models/classes");
 
       if (pathname === "/api/config" && req.method === "GET") {
         sendJSON(res, 200, { googleMapsApiKey: process.env.API_GOOGLE || "" });
@@ -136,9 +136,42 @@ const server = http.createServer(async (req, res) => {
           quando_ocorreu: data.quando_ocorreu || null,
           descricao: data.descricao
         });
+
+        await Timeline.registrar({
+          denuncia_id: id,
+          evento: "Denúncia registrada",
+          autor: "Sistema"
+        });
+
         sendJSON(res, 201, { id, codigo, message: "Denúncia criada com sucesso" });
         return;
       }
+
+      // if (pathname === "/api/denuncias" && req.method === "POST") {
+      //   const data = await getRequestBody(req);
+      //   let tipoId = data.tipo_id;
+      //   if (typeof tipoId === 'string' && isNaN(tipoId)) {
+      //     const tipos = await TipoOcorrencia.getAll();
+      //     const tipoEncontrado = tipos.find(t => t.nome.toLowerCase() === tipoId.toLowerCase() || t.id.toString() === tipoId);
+      //     if (tipoEncontrado) tipoId = tipoEncontrado.id;
+      //     else { sendJSON(res, 400, { error: "Tipo de ocorrência inválido" }); return; }
+      //   }
+      //   if (!tipoId || !data.severidade_id || !data.bairro || !data.descricao) {
+      //     sendJSON(res, 400, { error: "Campos obrigatórios: tipo_id, severidade_id, bairro, descricao" });
+      //     return;
+      //   }
+      //   const codigo = "DNC-" + Math.floor(1000 + Math.random() * 9000);
+      //   const id = await Denuncia.create({
+      //     codigo_anonimo: codigo,
+      //     tipo_id: Number(tipoId),
+      //     severidade_id: data.severidade_id,
+      //     bairro: data.bairro,
+      //     quando_ocorreu: data.quando_ocorreu || null,
+      //     descricao: data.descricao
+      //   });
+      //   sendJSON(res, 201, { id, codigo, message: "Denúncia criada com sucesso" });
+      //   return;
+      // }
 
       if (pathname.startsWith("/api/denuncias/") && req.method === "GET") {
         const codigo = pathname.split("/")[3];
@@ -180,6 +213,21 @@ const server = http.createServer(async (req, res) => {
           hora: hora || new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
           nome_remetente: autor === 'out' ? 'Denunciante' : 'Investigador'
         });
+        
+        if (autor === 'in') {
+          await Timeline.registrar({
+            denuncia_id: denuncia_id,
+            evento: "Mensagem enviada pelo investigador",
+            autor: "Investigador"
+          });
+        } else {
+          await Timeline.registrar({
+            denuncia_id: denuncia_id,
+            evento: "Nova mensagem do denunciante",
+            autor: "Denunciante"
+          });
+        }
+
         let resposta = null;
         if (autor === 'out') {
           const respostasAuto = [
@@ -206,6 +254,43 @@ const server = http.createServer(async (req, res) => {
         });
         return;
       }
+
+      // if (pathname === "/api/chat-mensagem" && req.method === "POST") {
+      //   const data = await getRequestBody(req);
+      //   const { denuncia_id, autor, texto, hora } = data;
+      //   const msgId = await MensagemChat.create({
+      //     denuncia_id,
+      //     autor,
+      //     texto,
+      //     hora: hora || new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+      //     nome_remetente: autor === 'out' ? 'Denunciante' : 'Investigador'
+      //   });
+      //   let resposta = null;
+      //   if (autor === 'out') {
+      //     const respostasAuto = [
+      //       "Obrigado pela informação. Vamos registrar isso no processo.",
+      //       "Anotado. Isso ajuda bastante na apuração.",
+      //       "Perfeito. Nossa equipe vai verificar o local com discrição.",
+      //       "Recebido. Se lembrar de mais detalhes, pode enviar por aqui a qualquer momento.",
+      //       "Certo. Sua colaboração é fundamental e totalmente sigilosa."
+      //     ];
+      //     const respostaTexto = respostasAuto[Math.floor(Math.random() * respostasAuto.length)];
+      //     const respostaHora = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+      //     await MensagemChat.create({
+      //       denuncia_id,
+      //       autor: 'in',
+      //       texto: respostaTexto,
+      //       hora: respostaHora,
+      //       nome_remetente: 'Investigador'
+      //     });
+      //     resposta = { autor: 'in', texto: respostaTexto, hora: respostaHora };
+      //   }
+      //   sendJSON(res, 201, {
+      //     mensagem: { id: msgId, autor, texto, hora },
+      //     resposta: resposta
+      //   });
+      //   return;
+      // }
 
       if (pathname.startsWith("/api/chat/") && req.method === "GET") {
         const denunciaId = pathname.split("/")[3];
@@ -281,9 +366,16 @@ const server = http.createServer(async (req, res) => {
           FROM denuncias d
           JOIN tipos_ocorrencia t ON d.tipo_id = t.id
           JOIN severidades s ON d.severidade_id = s.id
-          WHERE d.status IN ('aberta', 'em_analise')
           ORDER BY d.created_at DESC
         `);
+        // const [rows] = await conexaoPromise.query(`
+        //   SELECT d.*, t.nome as tipo_nome, s.nome as severidade_nome
+        //   FROM denuncias d
+        //   JOIN tipos_ocorrencia t ON d.tipo_id = t.id
+        //   JOIN severidades s ON d.severidade_id = s.id
+        //   WHERE d.status IN ('aberta', 'em_analise')
+        //   ORDER BY d.created_at DESC
+        // `);
         sendJSON(res, 200, rows);
         return;
       }
@@ -298,12 +390,47 @@ const server = http.createServer(async (req, res) => {
         const data = await getRequestBody(req);
         if (data.status) {
           await Denuncia.updateStatus(id, data.status);
+
+          // Mapeamento dos status para mensagens amigáveis
+          const statusMensagens = {
+            'aberta': 'Status alterado para: Aberta',
+            'em_analise': 'Status alterado para: Em Análise',
+            'resolvida': 'Status alterado para: Resolvida',
+            'arquivada': 'Status alterado para: Arquivada'
+          };
+
+          const evento = statusMensagens[data.status] || `Status alterado para: ${data.status}`;
+
+
+          await Timeline.registrar({
+            denuncia_id: id,
+            evento: evento,
+            autor: user.nome || user.email || 'Investigador'
+          });
+
           sendJSON(res, 200, { message: "Status atualizado" });
         } else {
           sendJSON(res, 400, { error: "Status inválido" });
         }
         return;
       }
+
+      // if (pathname.startsWith("/api/painel/denuncias/") && req.method === "PUT") {
+      //   const user = verifyToken(req);
+      //   if (!user) {
+      //     sendJSON(res, 401, { error: "Não autorizado" });
+      //     return;
+      //   }
+      //   const id = pathname.split("/")[4];
+      //   const data = await getRequestBody(req);
+      //   if (data.status) {
+      //     await Denuncia.updateStatus(id, data.status);
+      //     sendJSON(res, 200, { message: "Status atualizado" });
+      //   } else {
+      //     sendJSON(res, 400, { error: "Status inválido" });
+      //   }
+      //   return;
+      // }
 
       if (pathname === "/api/dashboard" && req.method === "GET") {
         const conexao = require("./config/conexao");
@@ -313,6 +440,70 @@ const server = http.createServer(async (req, res) => {
         const [bairros] = await db.query("SELECT bairro, COUNT(id) as total FROM ocorrencias GROUP BY bairro ORDER BY total DESC LIMIT 5");
         const [timeline] = await db.query("SELECT DATE(created_at) as dia, COUNT(id) as total FROM ocorrencias WHERE created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY) GROUP BY DATE(created_at) ORDER BY dia ASC");
         sendJSON(res, 200, { tipos, severidades, bairros, timeline });
+        return;
+      }
+
+      if (pathname === "/api/tendencias" && req.method === "GET") {
+        const conexao = require("./config/conexao");
+        const db = conexao.promise();
+
+        const [rows] = await db.query(`
+          SELECT 
+            t.nome as tipo_nome,
+            SUM(CASE WHEN o.created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY) THEN 1 ELSE 0 END) as atual,
+            SUM(CASE WHEN o.created_at >= DATE_SUB(NOW(), INTERVAL 14 DAY) AND o.created_at < DATE_SUB(NOW(), INTERVAL 7 DAY) THEN 1 ELSE 0 END) as anterior
+          FROM tipos_ocorrencia t
+          LEFT JOIN ocorrencias o ON t.id = o.tipo_id
+          GROUP BY t.id, t.nome
+          ORDER BY atual DESC
+        `);
+
+        const tendencias = rows.map(r => {
+          let variacao = 0;
+          let status = "estavel";
+
+          if (r.anterior > 0) {
+            variacao = (((r.atual - r.anterior) / r.anterior) * 100).toFixed(0);
+            if (variacao > 0) status = "alta";
+            else if (variacao < 0) status = "baixa";
+          } else if (r.atual > 0) {
+            variacao = 100;
+            status = "alta";
+          }
+
+          return {
+            tipo: r.tipo_nome,
+            atual: r.atual,
+            variacao: Math.abs(variacao),
+            status: status
+          };
+        });
+
+        sendJSON(res, 200, tendencias);
+        return;
+      }
+
+      if (pathname.startsWith("/api/timeline/") && req.method === "GET") {
+        console.log("Rota timeline acessada:", pathname);
+
+        const user = verifyToken(req);
+        if (!user) {
+          console.log("Usuário não autorizado");
+          sendJSON(res, 401, { error: "Não autorizado" });
+          return;
+        }
+
+        const denunciaId = pathname.split("/")[3];
+        console.log("Buscando timeline para denúncia ID:", denunciaId);
+
+        try {
+          const eventos = await Timeline.getByDenunciaId(denunciaId);
+          console.log("Eventos encontrados:", eventos.length);
+          sendJSON(res, 200, eventos);
+        } catch (error) {
+          console.error("Erro ao buscar timeline:", error);
+          sendJSON(res, 500, { error: "Erro ao buscar timeline", message: error.message });
+        }
         return;
       }
 
@@ -349,7 +540,7 @@ const server = http.createServer(async (req, res) => {
           return;
         }
         const stats = await Confirmacao.getEstatisticas(ocorrencia_id);
-        sendJSON(res, 201, { 
+        sendJSON(res, 201, {
           message: "Confirmação registrada",
           estatisticas: stats
         });

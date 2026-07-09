@@ -577,10 +577,21 @@
       <section class="page-head">
         <div class="container">
           <h1 class="page-title">Dashboard de Estatísticas</h1>
-          <p class="page-sub">Análise visual das ocorrências registradas</p>
+          <p class="page-sub">Análise visual e tendências das ocorrências registradas</p>
         </div>
       </section>
       <section class="container" style="padding-bottom: 56px;">
+        
+        <div class="section__head" style="margin-top: 20px;">
+          <h2 class="section__title" style="font-size: 1.3rem;">Tendências (Últimos 7 dias)</h2>
+        </div>
+        <div class="tendencias-grid" id="tendencias-grid">
+          <p style="color: var(--text-muted);">Carregando tendências...</p>
+        </div>
+
+        <div class="section__head" style="margin-top: 40px;">
+          <h2 class="section__title" style="font-size: 1.3rem;">Gráficos Detalhados</h2>
+        </div>
         <div class="dashboard-grid">
           <div class="card card--pad-lg">
             <h3 class="card__title">Ocorrências por Tipo</h3>
@@ -603,6 +614,37 @@
     `;
   }
 
+  // function pageDashboard() {
+  //   return `
+  //     <section class="page-head">
+  //       <div class="container">
+  //         <h1 class="page-title">Dashboard de Estatísticas</h1>
+  //         <p class="page-sub">Análise visual das ocorrências registradas</p>
+  //       </div>
+  //     </section>
+  //     <section class="container" style="padding-bottom: 56px;">
+  //       <div class="dashboard-grid">
+  //         <div class="card card--pad-lg">
+  //           <h3 class="card__title">Ocorrências por Tipo</h3>
+  //           <div class="chart-container"><canvas id="chart-tipos"></canvas></div>
+  //         </div>
+  //         <div class="card card--pad-lg">
+  //           <h3 class="card__title">Nível de Severidade</h3>
+  //           <div class="chart-container"><canvas id="chart-severidade"></canvas></div>
+  //         </div>
+  //         <div class="card card--pad-lg">
+  //           <h3 class="card__title">Top 5 Bairros</h3>
+  //           <div class="chart-container"><canvas id="chart-bairros"></canvas></div>
+  //         </div>
+  //         <div class="card card--pad-lg" style="grid-column: 1 / -1;">
+  //           <h3 class="card__title">Ocorrências nos últimos 7 dias</h3>
+  //           <div class="chart-container" style="height: 300px;"><canvas id="chart-timeline"></canvas></div>
+  //         </div>
+  //       </div>
+  //     </section>
+  //   `;
+  // }
+
   let chartsInstances = {};
 
   function initDashboard() {
@@ -610,7 +652,53 @@
       .then(res => res.json())
       .then(data => renderCharts(data))
       .catch(err => console.error(err));
+
+    fetch("/api/tendencias")
+      .then(res => res.json())
+      .then(data => renderTendencias(data))
+      .catch(err => console.error(err));
   }
+
+  function renderTendencias(tendencias) {
+    const container = document.getElementById("tendencias-grid");
+    if (!container) return;
+
+    if (!tendencias || tendencias.length === 0) {
+      container.innerHTML = `<p style="color: var(--text-muted);">Dados insuficientes para análise de tendências.</p>`;
+      return;
+    }
+
+    const html = tendencias.slice(0, 6).map(t => {
+      const isAlta = t.status === "alta";
+      const isBaixa = t.status === "baixa";
+      const icon = isAlta ? "↑" : isBaixa ? "↓" : "→";
+      const classe = isAlta ? "tendencia-up" : isBaixa ? "tendencia-down" : "tendencia-estavel";
+      const textoStatus = isAlta ? "aumento" : isBaixa ? "redução" : "estável";
+
+      return `
+        <div class="tendencia-card">
+          <div class="tendencia-info">
+            <span class="tendencia-nome">${t.tipo}</span>
+            <span class="tendencia-count">${t.atual} ocorrências</span>
+          </div>
+          <div class="tendencia-valor ${classe}">
+            <span class="tendencia-icon">${icon}</span>
+            <span class="tendencia-porcentagem">${t.variacao}%</span>
+            <span class="tendencia-legenda">${textoStatus}</span>
+          </div>
+        </div>
+      `;
+    }).join("");
+
+    container.innerHTML = html;
+  }
+
+  // function initDashboard() {
+  //   fetch("/api/dashboard")
+  //     .then(res => res.json())
+  //     .then(data => renderCharts(data))
+  //     .catch(err => console.error(err));
+  // }
 
   function renderCharts(data) {
     Object.values(chartsInstances).forEach(chart => chart.destroy());
@@ -1868,14 +1956,25 @@
           <td style="padding:12px 8px;">
             <span class="mini-badge badge--${d.severidade_id === 'alto' ? 'alto' : d.severidade_id === 'medio' ? 'medio' : 'baixo'}">${d.status}</span>
           </td>
-          <td style="padding:12px 8px;">
+          <td style="padding:12px 8px; display: flex; gap: 8px;">
+            <select class="select status-select" data-id="${d.id}" style="padding: 6px 10px; font-size: 0.85rem; flex: 1;">
+              <option value="aberta" ${d.status === 'aberta' ? 'selected' : ''}>Aberta</option>
+              <option value="em_analise" ${d.status === 'em_analise' ? 'selected' : ''}>Em Análise</option>
+              <option value="resolvida" ${d.status === 'resolvida' ? 'selected' : ''}>Resolvida</option>
+              <option value="arquivada" ${d.status === 'arquivada' ? 'selected' : ''}>Arquivada</option>
+            </select>
+            <button class="btn btn--soft btn--sm btn-timeline" data-id="${d.id}" style="padding: 6px 12px;">
+              ${icon("clock", 16)}
+            </button>
+          </td>
+          <!--td style="padding:12px 8px;">
             <select class="select status-select" data-id="${d.id}" style="padding: 6px 10px; font-size: 0.85rem;">
               <option value="aberta" ${d.status === 'aberta' ? 'selected' : ''}>Aberta</option>
               <option value="em_analise" ${d.status === 'em_analise' ? 'selected' : ''}>Em Análise</option>
               <option value="resolvida" ${d.status === 'resolvida' ? 'selected' : ''}>Resolvida</option>
               <option value="arquivada" ${d.status === 'arquivada' ? 'selected' : ''}>Arquivada</option>
             </select>
-          </td>
+          </td-->
         </tr>
       `;
     });
@@ -1913,6 +2012,113 @@
         }
       });
     });
+
+    container.querySelectorAll(".btn-timeline").forEach(btn => {
+      btn.addEventListener("click", (e) => {
+        const id = e.currentTarget.dataset.id;
+        abrirModalTimeline(id, token);
+      });
+    });
+  }
+
+  async function abrirModalTimeline(denunciaId, token) {
+    console.log("Abrindo timeline para denúncia:", denunciaId);
+    console.log("Token:", token ? "Presente" : "Ausente");
+
+    const modalHTML = `
+      <div class="modal-overlay" id="modal-timeline-overlay">
+        <div class="modal-content modal-timeline">
+          <div class="modal-header">
+            <h3 class="modal-title">${icon("clock", 20)} Linha do Tempo</h3>
+            <button class="modal-close" id="modal-timeline-close" type="button" aria-label="Fechar">
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                <path d="M18 6 6 18M6 6l12 12"/>
+              </svg>
+            </button>
+          </div>
+          <div class="modal-body" id="timeline-body">
+            <p style="text-align: center; color: var(--text-muted);">Carregando histórico...</p>
+          </div>
+        </div>
+      </div>
+    `;
+
+    document.body.insertAdjacentHTML("beforeend", modalHTML);
+
+    const overlay = document.getElementById("modal-timeline-overlay");
+    const btnClose = document.getElementById("modal-timeline-close");
+
+    btnClose.addEventListener("click", () => overlay.remove());
+    overlay.addEventListener("click", (e) => {
+      if (e.target.id === "modal-timeline-overlay") overlay.remove();
+    });
+
+    try {
+      console.log("Fazendo requisição para:", `/api/timeline/${denunciaId}`);
+
+      const res = await fetch(`/api/timeline/${denunciaId}`, {
+        headers: {
+          "Authorization": "Bearer " + token,
+          "Content-Type": "application/json"
+        }
+      });
+
+      console.log("Status da resposta:", res.status);
+
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        console.error("Erro na API:", errorData);
+        throw new Error(errorData.error || `Erro ${res.status}`);
+      }
+
+      const eventos = await res.json();
+      console.log("Eventos recebidos:", eventos);
+      renderTimeline(eventos);
+
+    } catch (err) {
+      console.error("Erro ao carregar timeline:", err);
+      document.getElementById("timeline-body").innerHTML = `
+        <div style="text-align: center; padding: 20px;">
+          <p style="color: var(--danger); margin-bottom: 10px;">Erro ao carregar timeline.</p>
+          <p style="color: var(--text-muted); font-size: 0.85rem;">${err.message}</p>
+          <button class="btn btn--primary btn--sm" onclick="abrirModalTimeline('${denunciaId}', '${token}')" style="margin-top: 10px;">
+            Tentar novamente
+          </button>
+        </div>
+      `;
+    }
+  }
+
+  function renderTimeline(eventos) {
+    const body = document.getElementById("timeline-body");
+    if (!eventos || eventos.length === 0) {
+      body.innerHTML = `<p style="text-align: center; color: var(--text-muted);">Nenhum evento registrado ainda.</p>`;
+      return;
+    }
+
+    const html = `
+      <div class="timeline-container">
+        ${eventos.map((e, index) => {
+      const data = new Date(e.created_at);
+      const hora = data.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+      const dataFormatada = data.toLocaleDateString('pt-BR');
+      const isLast = index === eventos.length - 1;
+
+      return `
+            <div class="timeline-item ${isLast ? 'timeline-item--last' : ''}">
+              <div class="timeline-marker"></div>
+              <div class="timeline-content">
+                <div class="timeline-time">${hora} · ${dataFormatada}</div>
+                <div class="timeline-evento">${e.evento}</div>
+                <div class="timeline-autor">Por: ${e.autor}</div>
+              </div>
+            </div>
+          `;
+    }).join("")}
+      </div>
+    `;
+
+    body.innerHTML = html;
   }
 
   function parseHash() {
