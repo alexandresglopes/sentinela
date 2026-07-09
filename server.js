@@ -51,15 +51,32 @@ function sendJSON(res, statusCode, data) {
 
 function verifyToken(req) {
   const authHeader = req.headers["authorization"];
-  if (!authHeader) return null;
-  const token = authHeader.split(" ")[1];
+  const urlParams = new URL(req.url, `http://localhost:${PORT}`).searchParams;
+  const tokenParam = urlParams.get("token");
+
+  const token = authHeader ? authHeader.split(" ")[1] : tokenParam;
+
+  if (!token) return null;
+
   try {
-    const JWT_SECRET = process.env.SESSION_SECRET || "sentinela-secret-key-2026";
+    const JWT_SECRET = process.env.SESSION_SECRET;
     return jwt.verify(token, JWT_SECRET);
   } catch (err) {
     return null;
   }
 }
+
+// function verifyToken(req) {
+//   const authHeader = req.headers["authorization"];
+//   if (!authHeader) return null;
+//   const token = authHeader.split(" ")[1];
+//   try {
+//     const JWT_SECRET = process.env.SESSION_SECRET || "sentinela-secret-key-2026";
+//     return jwt.verify(token, JWT_SECRET);
+//   } catch (err) {
+//     return null;
+//   }
+// }
 
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, `http://localhost:${PORT}`);
@@ -213,7 +230,7 @@ const server = http.createServer(async (req, res) => {
           hora: hora || new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
           nome_remetente: autor === 'out' ? 'Denunciante' : 'Investigador'
         });
-        
+
         if (autor === 'in') {
           await Timeline.registrar({
             denuncia_id: denuncia_id,
@@ -480,6 +497,223 @@ const server = http.createServer(async (req, res) => {
         });
 
         sendJSON(res, 200, tendencias);
+        return;
+      }
+
+      if (pathname === "/api/painel/previsao" && req.method === "GET") {
+        const user = verifyToken(req);
+        if (!user) {
+          sendJSON(res, 401, { error: "Não autorizado" });
+          return;
+        }
+
+        const conexao = require("./config/conexao");
+        const db = conexao.promise();
+
+        
+        const [dadosHistoricos] = await db.query(`
+          SELECT 
+            DAYOFWEEK(o.created_at) as dia_semana,
+            FLOOR(HOUR(o.created_at) / 6) as faixa_horaria,
+            o.bairro,
+            o.tipo_id,
+            t.nome as tipo_nome,
+            COUNT(*) as total
+          FROM ocorrencias o
+          JOIN tipos_ocorrencia t ON o.tipo_id = t.id
+          WHERE o.created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)
+          GROUP BY dia_semana, faixa_horaria, bairro, o.tipo_id, t.nome
+        `);
+
+        
+        const diaHoje = new Date().getDay();
+        const horaAtual = new Date().getHours();
+        const faixaAtual = Math.floor(horaAtual / 6);
+
+        
+        const totalOcorrencias = dadosHistoricos.reduce((sum, d) => sum + d.total, 0);
+        const mediaGeral = dadosHistoricos.length > 0 ? totalOcorrencias / dadosHistoricos.length : 0;
+
+      
+        const grupos = {};
+        dadosHistoricos.forEach(d => {
+          const chave = `${d.dia_semana}-${d.faixa_horaria}-${d.bairro}-${d.tipo_id}`;
+          if (!grupos[chave]) {
+            grupos[chave] = {
+              dia_semana: d.dia_semana,
+              faixa_horaria: d.faixa_horaria,
+              bairro: d.bairro,
+              tipo_id: d.tipo_id,
+              tipo_nome: d.tipo_nome,
+              valores: []
+            };
+          }
+          grupos[chave].valores.push(d.total);
+        });
+
+        
+        const previsoes = [];
+        Object.values(grupos).forEach(g => {
+          const n = g.valores.length;
+          const media = g.valores.reduce((a, b) => a + b, 0) / n;
+          const variancia = g.valores.reduce((acc, val) => acc + Math.pow(val - media, 2), 0) / n;
+          const desvio = Math.sqrt(variancia);
+
+     
+          let percentual = 0;
+          let risco = "baixo";
+
+          if (mediaGeral > 0) {
+            percentual = ((media - mediaGeral) / mediaGeral) * 100;
+
+            
+            if (percentual > 100) risco = "critico";
+            else if (percentual > 50) risco = "elevado";
+            else if (percentual > 20) risco = "moderado";
+            else risco = "baixo";
+          }
+
+          
+          if (n >= 1 && media > 0) {
+            previsoes.push({
+              dia_semana: g.dia_semana,
+              faixa_horaria: g.faixa_horaria,
+              bairro: g.bairro,
+              tipo_nome: g.tipo_nome,
+              media_ocorrencias: Math.round(media * 10) / 10,
+              desvio: Math.round(desvio * 10) / 10,
+              percentual_acima: Math.round(percentual),
+              risco: risco,
+              amostras: n
+            });
+          }
+        });
+
+       
+        const ordemRisco = { critico: 0, elevado: 1, moderado: 2, baixo: 3 };
+        previsoes.sort((a, b) => {
+          if (ordemRisco[a.risco] !== ordemRisco[b.risco]) {
+            return ordemRisco[a.risco] - ordemRisco[b.risco];
+          }
+          return b.media_ocorrencias - a.media_ocorrencias;
+        });
+
+        sendJSON(res, 200, {
+          previsoes: previsoes.slice(0, 20),
+          dia_atual: diaHoje,
+          faixa_atual: faixaAtual,
+          hora_atual: horaAtual,
+          total_grupos: previsoes.length,
+          media_geral: Math.round(mediaGeral * 10) / 10
+        });
+        return;
+      }
+
+      if (pathname === "/api/painel/relatorio/csv" && req.method === "GET") {
+        const user = verifyToken(req);
+        if (!user) {
+          sendJSON(res, 401, { error: "Não autorizado" });
+          return;
+        }
+
+        const conexao = require("./config/conexao");
+        const db = conexao.promise();
+
+        const [ocorrencias] = await db.query(`
+          SELECT o.id, o.titulo, o.bairro, o.tempo, o.descricao, 
+                 t.nome as tipo, s.nome as severidade, o.created_at
+          FROM ocorrencias o
+          JOIN tipos_ocorrencia t ON o.tipo_id = t.id
+          JOIN severidades s ON o.severidade_id = s.id
+          ORDER BY o.created_at DESC
+          LIMIT 100
+        `);
+
+        const BOM = '\uFEFF';
+        let csv = BOM + "ID,Título,Bairro,Tempo,Descrição,Tipo,Severidade,Data\n";
+
+        ocorrencias.forEach(o => {
+          const descricao = o.descricao ? o.descricao.replace(/"/g, '""') : '';
+          const data = new Date(o.created_at).toLocaleDateString('pt-BR');
+          csv += `${o.id},"${o.titulo}","${o.bairro}","${o.tempo}","${descricao}","${o.tipo}","${o.severidade}","${data}"\n`;
+        });
+
+        res.writeHead(200, {
+          "Content-Type": "text/csv; charset=utf-8",
+          "Content-Disposition": "attachment; filename=ocorrencias.csv"
+        });
+        res.end(csv);
+        return;
+      }
+
+      if (pathname === "/api/painel/relatorio/pdf" && req.method === "GET") {
+        const user = verifyToken(req);
+        if (!user) {
+          sendJSON(res, 401, { error: "Não autorizado" });
+          return;
+        }
+
+        const PDFDocument = require("pdfkit");
+        const doc = new PDFDocument();
+
+        const conexao = require("./config/conexao");
+        const db = conexao.promise();
+
+        const [ocorrencias] = await db.query(`
+          SELECT o.titulo, o.bairro, t.nome as tipo, s.nome as severidade, o.created_at
+          FROM ocorrencias o
+          JOIN tipos_ocorrencia t ON o.tipo_id = t.id
+          JOIN severidades s ON o.severidade_id = s.id
+          ORDER BY o.created_at DESC
+          LIMIT 50
+        `);
+
+        const [stats] = await db.query(`
+          SELECT COUNT(*) as total,
+                 SUM(CASE WHEN s.nome = 'alto' THEN 1 ELSE 0 END) as alto,
+                 SUM(CASE WHEN s.nome = 'medio' THEN 1 ELSE 0 END) as medio,
+                 SUM(CASE WHEN s.nome = 'baixo' THEN 1 ELSE 0 END) as baixo
+          FROM ocorrencias o
+          JOIN severidades s ON o.severidade_id = s.id
+        `);
+
+        res.writeHead(200, {
+          "Content-Type": "application/pdf",
+          "Content-Disposition": "attachment; filename=relatorio_sentinela.pdf"
+        });
+
+        doc.pipe(res);
+
+
+        doc.fontSize(20).text("Sentinela - Relatório de Ocorrências", { align: "center" });
+        doc.moveDown();
+        doc.fontSize(12).text(`Gerado em: ${new Date().toLocaleString('pt-BR')}`, { align: "center" });
+        doc.moveDown(2);
+
+
+        doc.fontSize(16).text("Resumo Estatístico", { underline: true });
+        doc.moveDown();
+        doc.fontSize(12);
+        doc.text(`Total de ocorrências: ${stats[0].total}`);
+        doc.text(`Risco Alto: ${stats[0].alto || 0}`);
+        doc.text(`Risco Médio: ${stats[0].medio || 0}`);
+        doc.text(`Risco Baixo: ${stats[0].baixo || 0}`);
+        doc.moveDown(2);
+
+
+        doc.fontSize(16).text("Ocorrências Recentes", { underline: true });
+        doc.moveDown();
+        doc.fontSize(10);
+
+        ocorrencias.forEach((o, index) => {
+          const data = new Date(o.created_at).toLocaleString('pt-BR');
+          doc.text(`${index + 1}. ${o.titulo}`);
+          doc.text(`   Bairro: ${o.bairro} | Tipo: ${o.tipo} | Severidade: ${o.severidade}`);
+          doc.text(`   Data: ${data}`, { color: "grey" });
+          doc.moveDown();
+        });
+
+        doc.end();
         return;
       }
 

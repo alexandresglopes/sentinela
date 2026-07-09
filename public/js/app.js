@@ -561,7 +561,15 @@
             <h1 class="page-title">Painel do Investigador</h1>
             <p class="page-sub">Gerenciamento de denúncias</p>
           </div>
-          <button class="btn btn--ghost btn--sm" id="btn-logout">Sair</button>
+          <div style="display: flex; gap: 10px;">
+            <button class="btn btn--soft btn--sm" id="btn-export-csv">
+              ${icon("chart", 16)} Exportar CSV
+            </button>
+            <button class="btn btn--soft btn--sm" id="btn-export-pdf">
+              ${icon("chart", 16)} Exportar PDF
+            </button>
+            <button class="btn btn--ghost btn--sm" id="btn-logout">Sair</button>
+          </div>
         </div>
       </section>
       <section class="container">
@@ -571,6 +579,25 @@
       </section>
     `;
   }
+
+  // function pagePainel() {
+  //   return `
+  //     <section class="page-head">
+  //       <div class="container page-head__row">
+  //         <div>
+  //           <h1 class="page-title">Painel do Investigador</h1>
+  //           <p class="page-sub">Gerenciamento de denúncias</p>
+  //         </div>
+  //         <button class="btn btn--ghost btn--sm" id="btn-logout">Sair</button>
+  //       </div>
+  //     </section>
+  //     <section class="container">
+  //       <div class="card card--pad-lg">
+  //         <div id="tabela-denuncias">Carregando...</div>
+  //       </div>
+  //     </section>
+  //   `;
+  // }
 
   function pageDashboard() {
     return `
@@ -612,6 +639,140 @@
         </div>
       </section>
     `;
+  }
+
+  function pagePrevisao() {
+    return `
+      <section class="page-head">
+        <div class="container">
+          <span class="eyebrow">${icon("chart", 14)} Análise Preditiva</span>
+          <h1 class="page-title" style="margin-top: 12px;">Inteligência Estatística</h1>
+          <p class="page-sub">Padrões detectados automaticamente nos últimos 30 dias de ocorrências</p>
+        </div>
+      </section>
+      <section class="container" style="padding-bottom: 56px;">
+        <div id="previsao-loading" style="text-align: center; padding: 40px; color: var(--text-muted);">
+          Analisando padrões históricos...
+        </div>
+        <div id="previsao-cards" style="display: none;"></div>
+        <div id="previsao-vazia" style="display: none; text-align: center; padding: 60px 20px;">
+          <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="color: var(--text-faint); margin-bottom: 16px;">
+            <circle cx="12" cy="12" r="10"/>
+            <path d="M12 6v6l4 2"/>
+          </svg>
+          <h3 style="margin-bottom: 8px;">Dados insuficientes</h3>
+          <p style="color: var(--text-muted); max-width: 400px; margin: 0 auto;">
+            São necessários pelo menos 30 dias de dados com ocorrências registradas para gerar previsões confiáveis.
+          </p>
+        </div>
+      </section>
+    `;
+  }
+
+  async function initPrevisao() {
+    const loading = document.getElementById("previsao-loading");
+    const cards = document.getElementById("previsao-cards");
+    const vazia = document.getElementById("previsao-vazia");
+
+    try {
+      const res = await fetch("/api/painel/previsao", {
+        headers: {
+          "Authorization": "Bearer " + (localStorage.getItem("sentinela_token") || "")
+        }
+      });
+
+      if (res.status === 401) {
+        window.location.hash = "#/login";
+        return;
+      }
+
+      const data = await res.json();
+      loading.style.display = "none";
+
+      if (!data.previsoes || data.previsoes.length === 0) {
+        vazia.style.display = "block";
+        return;
+      }
+
+      cards.style.display = "grid";
+      cards.style.gridTemplateColumns = "repeat(auto-fit, minmax(320px, 1fr))";
+      cards.style.gap = "20px";
+
+      const diasSemana = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];
+      const faixasHorarias = ["00h-06h", "06h-12h", "12h-18h", "18h-24h"];
+
+      const html = data.previsoes.map(p => {
+        const isCritico = p.risco === "critico";
+        const isElevado = p.risco === "elevado";
+        const isModerado = p.risco === "moderado";
+
+        let classeCard = "previsao-card";
+        let badgeCor = "var(--success)";
+        let badgeTexto = "Zona Tranquila";
+        let icone = "✓";
+
+        if (isCritico) {
+          classeCard += " previsao-card--critico";
+          badgeCor = "var(--danger)";
+          badgeTexto = "Risco Crítico";
+          icone = "🔴";
+        } else if (isElevado) {
+          classeCard += " previsao-card--elevado";
+          badgeCor = "var(--accent)";
+          badgeTexto = "Risco Elevado";
+          icone = "🟠";
+        } else if (isModerado) {
+          classeCard += " previsao-card--moderado";
+          badgeCor = "#f4a63b";
+          badgeTexto = "Risco Moderado";
+          icone = "🟡";
+        }
+
+        const diaNome = diasSemana[p.dia_semana] || "Desconhecido";
+        const faixaNome = faixasHorarias[p.faixa_horaria] || "Desconhecida";
+        const isHoje = p.dia_semana === data.dia_atual;
+
+        return `
+          <div class="${classeCard}">
+            <div class="previsao-header">
+              <span class="previsao-badge" style="background: ${badgeCor}; color: white;">
+                ${icone} ${badgeTexto}
+              </span>
+              ${isHoje ? '<span class="previsao-hoje">HOJE</span>' : ''}
+            </div>
+            <h3 class="previsao-titulo">${p.tipo_nome}</h3>
+            <div class="previsao-info">
+              <div class="previsao-info-item">
+                <span class="previsao-info-label">📅 Quando</span>
+                <span class="previsao-info-value">${diaNome} · ${faixaNome}</span>
+              </div>
+              <div class="previsao-info-item">
+                <span class="previsao-info-label">📍 Onde</span>
+                <span class="previsao-info-value">${p.bairro}</span>
+              </div>
+              <div class="previsao-info-item">
+                <span class="previsao-info-label"> Previsão</span>
+                <span class="previsao-info-value">${p.media_ocorrencias} ocorrências</span>
+              </div>
+            </div>
+            <div class="previsao-footer">
+              <span class="previsao-variacao" style="color: ${badgeCor};">
+                ${p.percentual_acima > 0 ? '+' : ''}${p.percentual_acima}% acima da média
+              </span>
+              <span class="previsao-amostras">
+                Baseado em ${p.amostras} amostras
+              </span>
+            </div>
+          </div>
+        `;
+      }).join("");
+
+      cards.innerHTML = html;
+
+    } catch (err) {
+      console.error("Erro ao carregar previsões:", err);
+      loading.innerHTML = `<p style="color: var(--danger);">Erro ao carregar previsões. Tente novamente.</p>`;
+    }
   }
 
   // function pageDashboard() {
@@ -1900,8 +2061,40 @@
       });
     }
 
+    const btnExportCSV = $("#btn-export-csv");
+    if (btnExportCSV) {
+      btnExportCSV.addEventListener("click", () => {
+        window.open("/api/painel/relatorio/csv?token=" + token, "_blank");
+      });
+    }
+
+    const btnExportPDF = $("#btn-export-pdf");
+    if (btnExportPDF) {
+      btnExportPDF.addEventListener("click", () => {
+        window.open("/api/painel/relatorio/pdf?token=" + token, "_blank");
+      });
+    }
+
     fetchDenuncias(token);
   }
+
+  // function initPainel() {
+  //   const token = localStorage.getItem("sentinela_token");
+  //   if (!token) {
+  //     window.location.hash = "#/login";
+  //     return;
+  //   }
+
+  //   const btnLogout = $("#btn-logout");
+  //   if (btnLogout) {
+  //     btnLogout.addEventListener("click", () => {
+  //       localStorage.removeItem("sentinela_token");
+  //       window.location.hash = "#/inicio";
+  //     });
+  //   }
+
+  //   fetchDenuncias(token);
+  // }
 
   async function fetchDenuncias(token) {
     const container = $("#tabela-denuncias");
@@ -2165,6 +2358,9 @@
       case "dashboard":
         html = pageDashboard();
         break;
+      case "previsao":
+        html = pagePrevisao();
+        break;
       case "inicio":
       default:
         html = pageInicio();
@@ -2186,7 +2382,8 @@
     if (path === "acompanhar") initAcompanhar(params.get("codigo"));
     if (path === "login") initLogin();
     if (path === "painel") initPainel();
-    if (path === "dashboard") initDashboard();
+    if (path === "dashboard") initDashboard();    ;
+    if (path === "previsao") initPrevisao();
   }
 
   function initEmergencia() {

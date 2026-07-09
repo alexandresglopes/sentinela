@@ -2127,3 +2127,147 @@ img {
   font-size: 0.8rem;
   color: var(--text-muted);
 }
+
+.previsao-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 24px;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.previsao-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: var(--border);
+  transition: background 0.3s ease;
+}
+
+.previsao-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow);
+}
+
+.previsao-card--critico::before {
+  background: var(--danger);
+}
+
+.previsao-card--critico {
+  border-color: rgba(239, 90, 99, 0.3);
+}
+
+.previsao-card--elevado::before {
+  background: var(--accent);
+}
+
+.previsao-card--elevado {
+  border-color: rgba(244, 166, 59, 0.3);
+}
+
+.previsao-card--moderado::before {
+  background: #f4a63b;
+}
+
+.previsao-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.previsao-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.previsao-hoje {
+  background: var(--primary);
+  color: var(--primary-contrast);
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  animation: pulseBadge 2s infinite;
+}
+
+@keyframes pulseBadge {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+.previsao-titulo {
+  font-size: 1.4rem;
+  font-weight: 700;
+  margin: 0 0 16px;
+  color: var(--text);
+  font-family: "Sora", sans-serif;
+}
+
+.previsao-info {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.previsao-info-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.previsao-info-label {
+  font-size: 0.75rem;
+  color: var(--text-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 600;
+}
+
+.previsao-info-value {
+  font-size: 0.95rem;
+  color: var(--text);
+  font-weight: 500;
+}
+
+.previsao-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 16px;
+  border-top: 1px solid var(--border-soft);
+}
+
+.previsao-variacao {
+  font-weight: 700;
+  font-size: 0.95rem;
+  font-family: "Sora", sans-serif;
+}
+
+.previsao-amostras {
+  font-size: 0.75rem;
+  color: var(--text-faint);
+}
+
+@media (max-width: 720px) {
+  .previsao-card {
+    padding: 20px;
+  }
+
+  .previsao-titulo {
+    font-size: 1.2rem;
+  }
+}
