@@ -1,32 +1,32 @@
-// const mysql = require("mysql2");
-// const path = require("path");
-
-// require("dotenv").config({ path: path.join(__dirname, "..", ".env") });
-
-// const conexao = mysql.createConnection({
-//     host: process.env.DB_HOST,
-//     port: process.env.DB_PORT,
-//     user: process.env.DB_USER,
-//     password: process.env.DB_PASSWORD,
-//     database: process.env.DB_DATABASE
-// });
-
-// module.exports = conexao;
-
-const { Pool } = require("pg");
+const mysql = require("mysql2");
 const path = require("path");
 
 require("dotenv").config({ path: path.join(__dirname, "..", ".env") });
 
-const pool = new Pool({
+const conexao = mysql.createConnection({
     host: process.env.DB_HOST,
     port: process.env.DB_PORT,
     user: process.env.DB_USER,
     password: process.env.DB_PASSWORD,
-    database: process.env.DB_DATABASE,
-    ssl: {
-        rejectUnauthorized: false 
-    }
+    database: process.env.DB_DATABASE
 });
 
-module.exports = pool;
+module.exports = conexao;
+
+// const { Pool } = require("pg");
+// const path = require("path");
+
+// require("dotenv").config({ path: path.join(__dirname, "..", ".env") });
+
+// const pool = new Pool({
+//     host: process.env.DB_HOST,
+//     port: process.env.DB_PORT,
+//     user: process.env.DB_USER,
+//     password: process.env.DB_PASSWORD,
+//     database: process.env.DB_DATABASE,
+//     ssl: {
+//         rejectUnauthorized: false 
+//     }
+// });
+
+// module.exports = pool;
