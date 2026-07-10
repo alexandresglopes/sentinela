@@ -2204,8 +2204,15 @@ img {
 }
 
 @keyframes pulseBadge {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.7; }
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.7;
+  }
 }
 
 .previsao-titulo {
@@ -2269,5 +2276,142 @@ img {
 
   .previsao-titulo {
     font-size: 1.2rem;
+  }
+}
+
+
+.tabela-desktop {
+  display: block;
+}
+
+.tabela-mobile {
+  display: none;
+}
+
+.tabela-row:hover {
+  background: var(--surface-2);
+}
+
+
+.denuncias-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.denuncia-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.denuncia-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-sm);
+}
+
+.denuncia-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 16px;
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--border-soft);
+}
+
+.denuncia-codigo {
+  font-family: monospace;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.denuncia-card-body {
+  padding: 16px;
+}
+
+.denuncia-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border-soft);
+}
+
+.denuncia-info:last-of-type {
+  border-bottom: none;
+}
+
+.denuncia-label {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.denuncia-value {
+  font-size: 0.95rem;
+  color: var(--text);
+  font-weight: 600;
+  text-align: right;
+  max-width: 60%;
+}
+
+.denuncia-card-footer {
+  padding: 14px 16px;
+  background: var(--surface-2);
+  border-top: 1px solid var(--border-soft);
+}
+
+
+@media (max-width: 768px) {
+  .tabela-desktop {
+    display: none;
+  }
+
+  .tabela-mobile {
+    display: block;
+  }
+
+  .denuncia-card {
+    margin: 0 -10px;
+    border-radius: 0;
+    border-left: none;
+    border-right: none;
+  }
+
+  .denuncia-card:first-child {
+    border-top: none;
+  }
+
+  .denuncia-card:last-child {
+    border-bottom: none;
+  }
+
+  .denuncia-card-header {
+    padding: 12px 16px;
+  }
+
+  .denuncia-card-body {
+    padding: 14px 16px;
+  }
+
+  .denuncia-card-footer {
+    padding: 12px 16px;
+  }
+
+  .denuncia-value {
+    max-width: 50%;
+    word-break: break-word;
+  }
+}
+
+@media (min-width: 769px) and (max-width: 1024px) {
+
+  .tabela-denuncias th,
+  .tabela-denuncias td {
+    font-size: 0.85rem;
+    padding: 10px 6px;
   }
 }

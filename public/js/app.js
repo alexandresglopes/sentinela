@@ -839,7 +839,7 @@
     const container = document.getElementById("tendencias-grid");
     if (!container) return;
 
-   
+
     if (!Array.isArray(tendencias)) {
       console.error("Tendências não é um array:", tendencias);
       container.innerHTML = `<p style="color: var(--text-muted);">Dados insuficientes para análise de tendências.</p>`;
@@ -2176,67 +2176,195 @@
     }
   }
 
+  // function renderTabelaDenuncias(denuncias, container, token) {
+  //   if (!denuncias.length) {
+  //     container.innerHTML = "<p>Nenhuma denúncia registrada.</p>";
+  //     return;
+  //   }
+
+  //   let html = `
+  //     <table style="width:100%; border-collapse: collapse;">
+  //       <thead>
+  //         <tr>
+  //           <th style="text-align:left; padding:8px; border-bottom: 1px solid var(--border);">Código</th>
+  //           <th style="text-align:left; padding:8px; border-bottom: 1px solid var(--border);">Tipo</th>
+  //           <th style="text-align:left; padding:8px; border-bottom: 1px solid var(--border);">Bairro</th>
+  //           <th style="text-align:left; padding:8px; border-bottom: 1px solid var(--border);">Status</th>
+  //           <th style="text-align:left; padding:8px; border-bottom: 1px solid var(--border);">Ações</th>
+  //         </tr>
+  //       </thead>
+  //       <tbody>
+  //   `;
+
+  //   denuncias.forEach(d => {
+  //     html += `
+  //       <tr style="border-bottom: 1px solid var(--border-soft);">
+  //         <td style="padding:12px 8px; font-family: monospace;">${d.codigo_anonimo}</td>
+  //         <td style="padding:12px 8px;">${d.tipo_nome}</td>
+  //         <td style="padding:12px 8px;">${d.bairro}</td>
+  //         <td style="padding:12px 8px;">
+  //           <span class="mini-badge badge--${d.severidade_id === 'alto' ? 'alto' : d.severidade_id === 'medio' ? 'medio' : 'baixo'}">${d.status}</span>
+  //         </td>
+  //         <td style="padding:12px 8px; display: flex; gap: 8px;">
+  //           <select class="select status-select" data-id="${d.id}" style="padding: 6px 10px; font-size: 0.85rem; flex: 1;">
+  //             <option value="aberta" ${d.status === 'aberta' ? 'selected' : ''}>Aberta</option>
+  //             <option value="em_analise" ${d.status === 'em_analise' ? 'selected' : ''}>Em Análise</option>
+  //             <option value="resolvida" ${d.status === 'resolvida' ? 'selected' : ''}>Resolvida</option>
+  //             <option value="arquivada" ${d.status === 'arquivada' ? 'selected' : ''}>Arquivada</option>
+  //           </select>
+  //           <button class="btn btn--soft btn--sm btn-timeline" data-id="${d.id}" style="padding: 6px 12px;">
+  //             ${icon("clock", 16)}
+  //           </button>
+  //         </td>
+  //         <!--td style="padding:12px 8px;">
+  //           <select class="select status-select" data-id="${d.id}" style="padding: 6px 10px; font-size: 0.85rem;">
+  //             <option value="aberta" ${d.status === 'aberta' ? 'selected' : ''}>Aberta</option>
+  //             <option value="em_analise" ${d.status === 'em_analise' ? 'selected' : ''}>Em Análise</option>
+  //             <option value="resolvida" ${d.status === 'resolvida' ? 'selected' : ''}>Resolvida</option>
+  //             <option value="arquivada" ${d.status === 'arquivada' ? 'selected' : ''}>Arquivada</option>
+  //           </select>
+  //         </td-->
+  //       </tr>
+  //     `;
+  //   });
+
+  //   html += `</tbody></table>`;
+  //   container.innerHTML = html;
+
+  //   container.querySelectorAll(".status-select").forEach(select => {
+  //     select.addEventListener("change", async (e) => {
+  //       const id = e.target.dataset.id;
+  //       const status = e.target.value;
+
+  //       select.disabled = true;
+
+  //       try {
+  //         const res = await fetch(`/api/painel/denuncias/${id}`, {
+  //           method: "PUT",
+  //           headers: {
+  //             "Content-Type": "application/json",
+  //             "Authorization": "Bearer " + token
+  //           },
+  //           body: JSON.stringify({ status })
+  //         });
+
+  //         if (res.ok) {
+  //           showToast("Status atualizado");
+  //           fetchDenuncias(token);
+  //         } else {
+  //           showToast("Erro ao atualizar");
+  //           select.disabled = false;
+  //         }
+  //       } catch (err) {
+  //         showToast("Erro de conexão");
+  //         select.disabled = false;
+  //       }
+  //     });
+  //   });
+
+  //   container.querySelectorAll(".btn-timeline").forEach(btn => {
+  //     btn.addEventListener("click", (e) => {
+  //       const id = e.currentTarget.dataset.id;
+  //       abrirModalTimeline(id, token);
+  //     });
+  //   });
+  // }
+
   function renderTabelaDenuncias(denuncias, container, token) {
     if (!denuncias.length) {
       container.innerHTML = "<p>Nenhuma denúncia registrada.</p>";
       return;
     }
 
-    let html = `
-      <table style="width:100%; border-collapse: collapse;">
+    // Versão desktop (tabela)
+    let htmlDesktop = `
+      <table class="tabela-denuncias" style="width:100%; border-collapse: collapse;">
         <thead>
           <tr>
-            <th style="text-align:left; padding:8px; border-bottom: 1px solid var(--border);">Código</th>
-            <th style="text-align:left; padding:8px; border-bottom: 1px solid var(--border);">Tipo</th>
-            <th style="text-align:left; padding:8px; border-bottom: 1px solid var(--border);">Bairro</th>
-            <th style="text-align:left; padding:8px; border-bottom: 1px solid var(--border);">Status</th>
-            <th style="text-align:left; padding:8px; border-bottom: 1px solid var(--border);">Ações</th>
+            <th style="text-align:left; padding:12px 8px; border-bottom: 2px solid var(--border);">Código</th>
+            <th style="text-align:left; padding:12px 8px; border-bottom: 2px solid var(--border);">Tipo</th>
+            <th style="text-align:left; padding:12px 8px; border-bottom: 2px solid var(--border);">Bairro</th>
+            <th style="text-align:left; padding:12px 8px; border-bottom: 2px solid var(--border);">Status</th>
+            <th style="text-align:left; padding:12px 8px; border-bottom: 2px solid var(--border);">Ações</th>
           </tr>
         </thead>
         <tbody>
     `;
 
+    // Versão mobile (cards)
+    let htmlMobile = `<div class="denuncias-cards">`;
+
     denuncias.forEach(d => {
-      html += `
-        <tr style="border-bottom: 1px solid var(--border-soft);">
-          <td style="padding:12px 8px; font-family: monospace;">${d.codigo_anonimo}</td>
+      // Linha da tabela (desktop)
+      htmlDesktop += `
+        <tr class="tabela-row" style="border-bottom: 1px solid var(--border-soft);">
+          <td style="padding:12px 8px; font-family: monospace; font-size: 0.9rem;">${d.codigo_anonimo}</td>
           <td style="padding:12px 8px;">${d.tipo_nome}</td>
           <td style="padding:12px 8px;">${d.bairro}</td>
           <td style="padding:12px 8px;">
             <span class="mini-badge badge--${d.severidade_id === 'alto' ? 'alto' : d.severidade_id === 'medio' ? 'medio' : 'baixo'}">${d.status}</span>
           </td>
-          <td style="padding:12px 8px; display: flex; gap: 8px;">
-            <select class="select status-select" data-id="${d.id}" style="padding: 6px 10px; font-size: 0.85rem; flex: 1;">
+          <td style="padding:12px 8px;">
+            <select class="select status-select" data-id="${d.id}" style="padding: 6px 10px; font-size: 0.85rem; min-width: 140px;">
               <option value="aberta" ${d.status === 'aberta' ? 'selected' : ''}>Aberta</option>
               <option value="em_analise" ${d.status === 'em_analise' ? 'selected' : ''}>Em Análise</option>
               <option value="resolvida" ${d.status === 'resolvida' ? 'selected' : ''}>Resolvida</option>
               <option value="arquivada" ${d.status === 'arquivada' ? 'selected' : ''}>Arquivada</option>
             </select>
-            <button class="btn btn--soft btn--sm btn-timeline" data-id="${d.id}" style="padding: 6px 12px;">
-              ${icon("clock", 16)}
-            </button>
           </td>
-          <!--td style="padding:12px 8px;">
-            <select class="select status-select" data-id="${d.id}" style="padding: 6px 10px; font-size: 0.85rem;">
+        </tr>
+      `;
+
+      // Card (mobile)
+      htmlMobile += `
+        <div class="denuncia-card">
+          <div class="denuncia-card-header">
+            <span class="denuncia-codigo">${d.codigo_anonimo}</span>
+            <span class="mini-badge badge--${d.severidade_id === 'alto' ? 'alto' : d.severidade_id === 'medio' ? 'medio' : 'baixo'}">${d.status}</span>
+          </div>
+          <div class="denuncia-card-body">
+            <div class="denuncia-info">
+              <span class="denuncia-label">Tipo:</span>
+              <span class="denuncia-value">${d.tipo_nome}</span>
+            </div>
+            <div class="denuncia-info">
+              <span class="denuncia-label">Bairro:</span>
+              <span class="denuncia-value">${d.bairro}</span>
+            </div>
+            <div class="denuncia-info">
+              <span class="denuncia-label">Data:</span>
+              <span class="denuncia-value">${new Date(d.created_at).toLocaleDateString('pt-BR')}</span>
+            </div>
+          </div>
+          <div class="denuncia-card-footer">
+            <label style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 6px;">Alterar status:</label>
+            <select class="select status-select" data-id="${d.id}" style="width: 100%; padding: 10px; font-size: 0.95rem;">
               <option value="aberta" ${d.status === 'aberta' ? 'selected' : ''}>Aberta</option>
               <option value="em_analise" ${d.status === 'em_analise' ? 'selected' : ''}>Em Análise</option>
               <option value="resolvida" ${d.status === 'resolvida' ? 'selected' : ''}>Resolvida</option>
               <option value="arquivada" ${d.status === 'arquivada' ? 'selected' : ''}>Arquivada</option>
             </select>
-          </td-->
-        </tr>
+          </div>
+        </div>
       `;
     });
 
-    html += `</tbody></table>`;
-    container.innerHTML = html;
+    htmlDesktop += `</tbody></table>`;
+    htmlMobile += `</div>`;
 
+    container.innerHTML = `
+      <div class="tabela-desktop">${htmlDesktop}</div>
+      <div class="tabela-mobile">${htmlMobile}</div>
+    `;
+
+    // Adiciona event listeners para ambos (desktop e mobile)
     container.querySelectorAll(".status-select").forEach(select => {
       select.addEventListener("change", async (e) => {
         const id = e.target.dataset.id;
         const status = e.target.value;
 
         select.disabled = true;
+        select.style.opacity = "0.6";
 
         try {
           const res = await fetch(`/api/painel/denuncias/${id}`, {
@@ -2250,22 +2378,26 @@
 
           if (res.ok) {
             showToast("Status atualizado");
+            // Atualiza badge no card mobile
+            const card = select.closest(".denuncia-card");
+            if (card) {
+              const badge = card.querySelector(".mini-badge");
+              if (badge) {
+                badge.textContent = status;
+                badge.className = `mini-badge badge--${status === 'aberta' ? 'baixo' : status === 'em_analise' ? 'medio' : 'alto'}`;
+              }
+            }
             fetchDenuncias(token);
           } else {
             showToast("Erro ao atualizar");
             select.disabled = false;
+            select.style.opacity = "1";
           }
         } catch (err) {
           showToast("Erro de conexão");
           select.disabled = false;
+          select.style.opacity = "1";
         }
-      });
-    });
-
-    container.querySelectorAll(".btn-timeline").forEach(btn => {
-      btn.addEventListener("click", (e) => {
-        const id = e.currentTarget.dataset.id;
-        abrirModalTimeline(id, token);
       });
     });
   }
