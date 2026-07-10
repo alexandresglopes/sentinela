@@ -301,15 +301,16 @@ const server = http.createServer(async (req, res) => {
           sendJSON(res, 401, { error: "Não autorizado" });
           return;
         }
-        const pool = require("./config/conexao");
-        const result = await pool.query(`
+        const conexao = require("./config/conexao");
+        const db = conexao.promise();
+        const [rows] = await db.query(`
           SELECT d.*, t.nome as tipo_nome, s.nome as severidade_nome
           FROM denuncias d
           JOIN tipos_ocorrencia t ON d.tipo_id = t.id
           JOIN severidades s ON d.severidade_id = s.id
           ORDER BY d.created_at DESC
         `);
-        sendJSON(res, 200, result.rows);
+        sendJSON(res, 200, rows);
         return;
       }
 
@@ -357,101 +358,46 @@ const server = http.createServer(async (req, res) => {
         return;
       }
 
-      // if (pathname === "/api/dashboard" && req.method === "GET") {
-      //   const pool = require("./config/conexao");
+      // ✅ ROTA ADICIONADA - TENDÊNCIAS
+      if (pathname === "/api/tendencias" && req.method === "GET") {
+        const conexao = require("./config/conexao");
+        const db = conexao.promise();
 
-      //   const tiposResult = await pool.query("SELECT t.nome, COUNT(o.id) as total FROM ocorrencias o JOIN tipos_ocorrencia t ON o.tipo_id = t.id GROUP BY t.id, t.nome");
-      //   const severidadesResult = await pool.query("SELECT s.nome, s.cor, COUNT(o.id) as total FROM ocorrencias o JOIN severidades s ON o.severidade_id = s.id GROUP BY s.id, s.nome, s.cor");
-      //   const bairrosResult = await pool.query("SELECT bairro, COUNT(id) as total FROM ocorrencias GROUP BY bairro ORDER BY total DESC LIMIT 5");
-      //   const timelineResult = await pool.query("SELECT DATE(created_at) as dia, COUNT(id) as total FROM ocorrencias WHERE created_at >= NOW() - INTERVAL '7 days' GROUP BY DATE(created_at) ORDER BY dia ASC");
+        const [rows] = await db.query(`
+          SELECT 
+            t.nome as tipo_nome,
+            SUM(CASE WHEN o.created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY) THEN 1 ELSE 0 END) as atual,
+            SUM(CASE WHEN o.created_at >= DATE_SUB(NOW(), INTERVAL 14 DAY) AND o.created_at < DATE_SUB(NOW(), INTERVAL 7 DAY) THEN 1 ELSE 0 END) as anterior
+          FROM tipos_ocorrencia t
+          LEFT JOIN ocorrencias o ON t.id = o.tipo_id
+          GROUP BY t.id, t.nome
+          ORDER BY atual DESC
+        `);
 
-      //   sendJSON(res, 200, { 
-      //     tipos: tiposResult.rows, 
-      //     severidades: severidadesResult.rows, 
-      //     bairros: bairrosResult.rows, 
-      //     timeline: timelineResult.rows 
-      //   });
-      //   return;
-      // }
+        const tendencias = rows.map(r => {
+          let variacao = 0;
+          let status = "estavel";
 
-      // if (pathname === "/api/tendencias" && req.method === "GET") {
-      //   const pool = require("./config/conexao");
+          if (r.anterior > 0) {
+            variacao = (((r.atual - r.anterior) / r.anterior) * 100).toFixed(0);
+            if (variacao > 0) status = "alta";
+            else if (variacao < 0) status = "baixa";
+          } else if (r.atual > 0) {
+            variacao = 100;
+            status = "alta";
+          }
 
-      //   const result = await pool.query(`
-      //     SELECT 
-      //       t.nome as tipo_nome,
-      //       SUM(CASE WHEN o.created_at >= NOW() - INTERVAL '7 days' THEN 1 ELSE 0 END) as atual,
-      //       SUM(CASE WHEN o.created_at >= NOW() - INTERVAL '14 days' AND o.created_at < NOW() - INTERVAL '7 days' THEN 1 ELSE 0 END) as anterior
-      //     FROM tipos_ocorrencia t
-      //     LEFT JOIN ocorrencias o ON t.id = o.tipo_id
-      //     GROUP BY t.id, t.nome
-      //     ORDER BY atual DESC
-      //   `);
+          return {
+            tipo: r.tipo_nome,
+            atual: r.atual,
+            variacao: Math.abs(variacao),
+            status: status
+          };
+        });
 
-      //   const tendencias = result.rows.map(r => {
-      //     let variacao = 0;
-      //     let status = "estavel";
-
-      //     if (r.anterior > 0) {
-      //       variacao = (((r.atual - r.anterior) / r.anterior) * 100).toFixed(0);
-      //       if (variacao > 0) status = "alta";
-      //       else if (variacao < 0) status = "baixa";
-      //     } else if (r.atual > 0) {
-      //       variacao = 100;
-      //       status = "alta";
-      //     }
-
-      //     return {
-      //       tipo: r.tipo_nome,
-      //       atual: parseInt(r.atual),
-      //       variacao: Math.abs(variacao),
-      //       status: status
-      //     };
-      //   });
-
-      //   sendJSON(res, 200, tendencias);
-      //   return;
-      // }
-
-      // if (pathname === "/api/tendencias" && req.method === "GET") {
-      //   const conexao = require("./config/conexao");
-      //   const db = conexao.promise();
-
-      //   const [rows] = await db.query(`
-      //     SELECT 
-      //       t.nome as tipo_nome,
-      //       SUM(CASE WHEN o.created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY) THEN 1 ELSE 0 END) as atual,
-      //       SUM(CASE WHEN o.created_at >= DATE_SUB(NOW(), INTERVAL 14 DAY) AND o.created_at < DATE_SUB(NOW(), INTERVAL 7 DAY) THEN 1 ELSE 0 END) as anterior
-      //     FROM tipos_ocorrencia t
-      //     LEFT JOIN ocorrencias o ON t.id = o.tipo_id
-      //     GROUP BY t.id, t.nome
-      //     ORDER BY atual DESC
-      //   `);
-
-      //   const tendencias = rows.map(r => {
-      //     let variacao = 0;
-      //     let status = "estavel";
-
-      //     if (r.anterior > 0) {
-      //       variacao = (((r.atual - r.anterior) / r.anterior) * 100).toFixed(0);
-      //       if (variacao > 0) status = "alta";
-      //       else if (variacao < 0) status = "baixa";
-      //     } else if (r.atual > 0) {
-      //       variacao = 100;
-      //       status = "alta";
-      //     }
-
-      //     return {
-      //       tipo: r.tipo_nome,
-      //       atual: r.atual,
-      //       variacao: Math.abs(variacao),
-      //       status: status
-      //     };
-      //   });
-
-      //   sendJSON(res, 200, tendencias);
-      //   return;
-      // }
+        sendJSON(res, 200, tendencias);
+        return;
+      }
 
       if (pathname === "/api/painel/previsao" && req.method === "GET") {
         const user = verifyToken(req);
@@ -553,107 +499,6 @@ const server = http.createServer(async (req, res) => {
         return;
       }
 
-      if (pathname === "/api/painel/previsao" && req.method === "GET") {
-        const user = verifyToken(req);
-        if (!user) {
-          sendJSON(res, 401, { error: "Não autorizado" });
-          return;
-        }
-
-        const pool = require("./config/conexao");
-
-        const result = await pool.query(`
-          SELECT 
-            EXTRACT(DOW FROM o.created_at) as dia_semana,
-            FLOOR(EXTRACT(HOUR FROM o.created_at) / 6) as faixa_horaria,
-            o.bairro,
-            o.tipo_id,
-            t.nome as tipo_nome,
-            COUNT(*) as total
-          FROM ocorrencias o
-          JOIN tipos_ocorrencia t ON o.tipo_id = t.id
-          WHERE o.created_at >= NOW() - INTERVAL '30 days'
-          GROUP BY dia_semana, faixa_horaria, bairro, o.tipo_id, t.nome
-        `);
-
-        const dadosHistoricos = result.rows;
-
-        const diaHoje = new Date().getDay();
-        const horaAtual = new Date().getHours();
-        const faixaAtual = Math.floor(horaAtual / 6);
-
-        const totalOcorrencias = dadosHistoricos.reduce((sum, d) => sum + parseInt(d.total), 0);
-        const mediaGeral = dadosHistoricos.length > 0 ? totalOcorrencias / dadosHistoricos.length : 0;
-
-        const grupos = {};
-        dadosHistoricos.forEach(d => {
-          const chave = `${d.dia_semana}-${d.faixa_horaria}-${d.bairro}-${d.tipo_id}`;
-          if (!grupos[chave]) {
-            grupos[chave] = {
-              dia_semana: parseInt(d.dia_semana),
-              faixa_horaria: parseInt(d.faixa_horaria),
-              bairro: d.bairro,
-              tipo_id: parseInt(d.tipo_id),
-              tipo_nome: d.tipo_nome,
-              valores: []
-            };
-          }
-          grupos[chave].valores.push(parseInt(d.total));
-        });
-
-        const previsoes = [];
-        Object.values(grupos).forEach(g => {
-          const n = g.valores.length;
-          const media = g.valores.reduce((a, b) => a + b, 0) / n;
-          const variancia = g.valores.reduce((acc, val) => acc + Math.pow(val - media, 2), 0) / n;
-          const desvio = Math.sqrt(variancia);
-
-          let percentual = 0;
-          let risco = "baixo";
-
-          if (mediaGeral > 0) {
-            percentual = ((media - mediaGeral) / mediaGeral) * 100;
-
-            if (percentual > 100) risco = "critico";
-            else if (percentual > 50) risco = "elevado";
-            else if (percentual > 20) risco = "moderado";
-            else risco = "baixo";
-          }
-
-          if (n >= 1 && media > 0) {
-            previsoes.push({
-              dia_semana: g.dia_semana,
-              faixa_horaria: g.faixa_horaria,
-              bairro: g.bairro,
-              tipo_nome: g.tipo_nome,
-              media_ocorrencias: Math.round(media * 10) / 10,
-              desvio: Math.round(desvio * 10) / 10,
-              percentual_acima: Math.round(percentual),
-              risco: risco,
-              amostras: n
-            });
-          }
-        });
-
-        const ordemRisco = { critico: 0, elevado: 1, moderado: 2, baixo: 3 };
-        previsoes.sort((a, b) => {
-          if (ordemRisco[a.risco] !== ordemRisco[b.risco]) {
-            return ordemRisco[a.risco] - ordemRisco[b.risco];
-          }
-          return b.media_ocorrencias - a.media_ocorrencias;
-        });
-
-        sendJSON(res, 200, {
-          previsoes: previsoes.slice(0, 20),
-          dia_atual: diaHoje,
-          faixa_atual: faixaAtual,
-          hora_atual: horaAtual,
-          total_grupos: previsoes.length,
-          media_geral: Math.round(mediaGeral * 10) / 10
-        });
-        return;
-      }
-
       if (pathname === "/api/painel/relatorio/csv" && req.method === "GET") {
         const user = verifyToken(req);
         if (!user) {
@@ -661,9 +506,10 @@ const server = http.createServer(async (req, res) => {
           return;
         }
 
-        const pool = require("./config/conexao");
+        const conexao = require("./config/conexao");
+        const db = conexao.promise();
 
-        const result = await pool.query(`
+        const [rows] = await db.query(`
           SELECT o.id, o.titulo, o.bairro, o.tempo, o.descricao, 
                  t.nome as tipo, s.nome as severidade, o.created_at
           FROM ocorrencias o
@@ -673,7 +519,7 @@ const server = http.createServer(async (req, res) => {
           LIMIT 100
         `);
 
-        const ocorrencias = result.rows;
+        const ocorrencias = rows;
 
         const BOM = '\uFEFF';
         let csv = BOM + "ID,Título,Bairro,Tempo,Descrição,Tipo,Severidade,Data\n";
@@ -702,9 +548,10 @@ const server = http.createServer(async (req, res) => {
         const PDFDocument = require("pdfkit");
         const doc = new PDFDocument();
 
-        const pool = require("./config/conexao");
+        const conexao = require("./config/conexao");
+        const db = conexao.promise();
 
-        const ocorrenciasResult = await pool.query(`
+        const [ocorrenciasRows] = await db.query(`
           SELECT o.titulo, o.bairro, t.nome as tipo, s.nome as severidade, o.created_at
           FROM ocorrencias o
           JOIN tipos_ocorrencia t ON o.tipo_id = t.id
@@ -713,17 +560,17 @@ const server = http.createServer(async (req, res) => {
           LIMIT 50
         `);
 
-        const statsResult = await pool.query(`
+        const [statsRows] = await db.query(`
           SELECT COUNT(*) as total,
-                 SUM(CASE WHEN s.id = 'alto' THEN 1 ELSE 0 END) as alto,
-                 SUM(CASE WHEN s.id = 'medio' THEN 1 ELSE 0 END) as medio,
-                 SUM(CASE WHEN s.id = 'baixo' THEN 1 ELSE 0 END) as baixo
+                 SUM(CASE WHEN s.nome = 'alto' THEN 1 ELSE 0 END) as alto,
+                 SUM(CASE WHEN s.nome = 'medio' THEN 1 ELSE 0 END) as medio,
+                 SUM(CASE WHEN s.nome = 'baixo' THEN 1 ELSE 0 END) as baixo
           FROM ocorrencias o
           JOIN severidades s ON o.severidade_id = s.id
         `);
 
-        const ocorrencias = ocorrenciasResult.rows;
-        const stats = statsResult.rows;
+        const ocorrencias = ocorrenciasRows;
+        const stats = statsRows;
 
         res.writeHead(200, {
           "Content-Type": "application/pdf",

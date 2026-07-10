@@ -808,6 +808,18 @@
 
   let chartsInstances = {};
 
+  // function initDashboard() {
+  //   fetch("/api/dashboard")
+  //     .then(res => res.json())
+  //     .then(data => renderCharts(data))
+  //     .catch(err => console.error(err));
+
+  //   fetch("/api/tendencias")
+  //     .then(res => res.json())
+  //     .then(data => renderTendencias(data))
+  //     .catch(err => console.error(err));
+  // }
+
   function initDashboard() {
     fetch("/api/dashboard")
       .then(res => res.json())
@@ -816,7 +828,10 @@
 
     fetch("/api/tendencias")
       .then(res => res.json())
-      .then(data => renderTendencias(data))
+      .then(data => {
+        console.log("Dados de tendências recebidos:", data);
+        renderTendencias(data);
+      })
       .catch(err => console.error(err));
   }
 
@@ -824,7 +839,14 @@
     const container = document.getElementById("tendencias-grid");
     if (!container) return;
 
-    if (!tendencias || tendencias.length === 0) {
+   
+    if (!Array.isArray(tendencias)) {
+      console.error("Tendências não é um array:", tendencias);
+      container.innerHTML = `<p style="color: var(--text-muted);">Dados insuficientes para análise de tendências.</p>`;
+      return;
+    }
+
+    if (tendencias.length === 0) {
       container.innerHTML = `<p style="color: var(--text-muted);">Dados insuficientes para análise de tendências.</p>`;
       return;
     }
@@ -837,22 +859,56 @@
       const textoStatus = isAlta ? "aumento" : isBaixa ? "redução" : "estável";
 
       return `
-        <div class="tendencia-card">
-          <div class="tendencia-info">
-            <span class="tendencia-nome">${t.tipo}</span>
-            <span class="tendencia-count">${t.atual} ocorrências</span>
-          </div>
-          <div class="tendencia-valor ${classe}">
-            <span class="tendencia-icon">${icon}</span>
-            <span class="tendencia-porcentagem">${t.variacao}%</span>
-            <span class="tendencia-legenda">${textoStatus}</span>
-          </div>
-        </div>
-      `;
+            <div class="tendencia-card">
+                <div class="tendencia-info">
+                    <span class="tendencia-nome">${t.tipo}</span>
+                    <span class="tendencia-count">${t.atual} ocorrências</span>
+                </div>
+                <div class="tendencia-valor ${classe}">
+                    <span class="tendencia-icon">${icon}</span>
+                    <span class="tendencia-porcentagem">${t.variacao}%</span>
+                    <span class="tendencia-legenda">${textoStatus}</span>
+                </div>
+            </div>
+        `;
     }).join("");
 
     container.innerHTML = html;
   }
+
+  // function renderTendencias(tendencias) {
+  //   const container = document.getElementById("tendencias-grid");
+  //   if (!container) return;
+
+  //   if (!tendencias || tendencias.length === 0) {
+  //     container.innerHTML = `<p style="color: var(--text-muted);">Dados insuficientes para análise de tendências.</p>`;
+  //     return;
+  //   }
+
+  //   const html = tendencias.slice(0, 6).map(t => {
+  //     const isAlta = t.status === "alta";
+  //     const isBaixa = t.status === "baixa";
+  //     const icon = isAlta ? "↑" : isBaixa ? "↓" : "→";
+  //     const classe = isAlta ? "tendencia-up" : isBaixa ? "tendencia-down" : "tendencia-estavel";
+  //     const textoStatus = isAlta ? "aumento" : isBaixa ? "redução" : "estável";
+
+  //     return `
+  //       <div class="tendencia-card">
+  //         <div class="tendencia-info">
+  //           <span class="tendencia-nome">${t.tipo}</span>
+  //           <span class="tendencia-count">${t.atual} ocorrências</span>
+  //         </div>
+  //         <div class="tendencia-valor ${classe}">
+  //           <span class="tendencia-icon">${icon}</span>
+  //           <span class="tendencia-porcentagem">${t.variacao}%</span>
+  //           <span class="tendencia-legenda">${textoStatus}</span>
+  //         </div>
+  //       </div>
+  //     `;
+  //   }).join("");
+
+  //   container.innerHTML = html;
+  // }
 
   // function initDashboard() {
   //   fetch("/api/dashboard")
