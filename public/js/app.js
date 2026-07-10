@@ -2382,7 +2382,7 @@
     if (path === "acompanhar") initAcompanhar(params.get("codigo"));
     if (path === "login") initLogin();
     if (path === "painel") initPainel();
-    if (path === "dashboard") initDashboard();    ;
+    if (path === "dashboard") initDashboard();;
     if (path === "previsao") initPrevisao();
   }
 
