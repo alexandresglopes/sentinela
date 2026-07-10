@@ -11,6 +11,14 @@ const conexao = mysql.createConnection({
     database: process.env.DB_DATABASE
 });
 
+conexao.connect((err) => {
+    if (err) {
+        console.error("Erro ao conectar ao MySQL:", err);
+        return;
+    }
+    console.log("Conectado ao MySQL com sucesso!");
+});
+
 module.exports = conexao;
 
 // const { Pool } = require("pg");
