@@ -102,6 +102,72 @@ const server = http.createServer(async (req, res) => {
         return;
       }
 
+          
+      if (pathname.startsWith("/api/ocorrenciasdetalhes/") && req.method === "GET") {
+        const ocorrenciaId = pathname.split("/")[3];
+        
+       
+        if (pathname.includes("/confirmacoes")) {
+          
+        } else {
+          const conexao = require("./config/conexao");
+          const db = conexao.promise();
+
+          try {
+            
+            const [rows] = await db.query(`
+              SELECT 
+                o.id,
+                o.titulo,
+                o.bairro,
+                o.tempo,
+                o.descricao,
+                o.lat,
+                o.lng,
+                o.created_at,
+                t.nome as tipo_nome,
+                s.nome as severidade,
+                s.cor as severidade_cor
+              FROM ocorrencias o
+              LEFT JOIN tipos_ocorrencia t ON o.tipo_id = t.id
+              LEFT JOIN severidades s ON o.severidade_id = s.id
+              WHERE o.id = ?
+            `, [ocorrenciaId]);
+
+            if (rows.length === 0) {
+              sendJSON(res, 404, { error: "Ocorrência não encontrada" });
+              return;
+            }
+
+            const ocorrencia = rows[0];
+
+            
+            const [statsRows] = await db.query(`
+              SELECT 
+                SUM(CASE WHEN tipo_confirmacao = 'confirmou' THEN 1 ELSE 0 END) as confirmou,
+                SUM(CASE WHEN tipo_confirmacao = 'falsa' THEN 1 ELSE 0 END) as falsa
+              FROM confirmacoes_ocorrencias
+              WHERE ocorrencia_id = ?
+            `, [ocorrenciaId]);
+
+            const stats = statsRows[0] || { confirmou: 0, falsa: 0 };
+
+           
+            sendJSON(res, 200, {
+              ...ocorrencia,
+              estatisticas: {
+                confirmacoes: parseInt(stats.confirmou) || 0,
+                falsas: parseInt(stats.falsa) || 0
+              }
+            });
+          } catch (error) {
+            console.error("Erro ao buscar detalhes:", error);
+            sendJSON(res, 500, { error: "Erro ao buscar detalhes", message: error.message });
+          }
+          return;
+        }
+      }
+
       if (pathname === "/api/ocorrencias" && req.method === "GET") {
         const ocorrencias = await Ocorrencia.getAll();
         sendJSON(res, 200, ocorrencias);
@@ -358,7 +424,6 @@ const server = http.createServer(async (req, res) => {
         return;
       }
 
-      // ✅ ROTA ADICIONADA - TENDÊNCIAS
       if (pathname === "/api/tendencias" && req.method === "GET") {
         const conexao = require("./config/conexao");
         const db = conexao.promise();
@@ -653,7 +718,7 @@ const server = http.createServer(async (req, res) => {
           return;
         }
         const stats = await Confirmacao.getEstatisticasMultiples(ocorrencia_ids);
-        console.log("📊 Stats retornados:", stats); // ← ADICIONE ESTA LINHA
+        console.log("📊 Stats retornados:", stats); 
         sendJSON(res, 200, stats);
         return;
       }

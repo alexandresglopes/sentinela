@@ -48,6 +48,15 @@ class Ocorrencia {
         return rows[0];
     }
 
+    static async getDetalhesId(id) {
+        const [rows] = await conexaoPromise.query(`
+            SELECT *
+            FROM ocorrencias
+            WHERE id = ?
+        `, [id]);
+        return rows[0];
+    }
+
     static async create(data) {
         const { tipo_id, severidade_id, titulo, bairro, tempo, lat, lng, descricao } = data;
         const [result] = await conexaoPromise.query(`
