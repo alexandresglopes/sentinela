@@ -633,6 +633,18 @@ const server = http.createServer(async (req, res) => {
         return;
       }
 
+      // if (pathname === "/api/confirmacoes/stats" && req.method === "POST") {
+      //   const data = await getRequestBody(req);
+      //   const { ocorrencia_ids } = data;
+      //   if (!Array.isArray(ocorrencia_ids)) {
+      //     sendJSON(res, 400, { error: "Lista de IDs inválida" });
+      //     return;
+      //   }
+      //   const stats = await Confirmacao.getEstatisticasMultiples(ocorrencia_ids);
+      //   sendJSON(res, 200, stats);
+      //   return;
+      // }
+
       if (pathname === "/api/confirmacoes/stats" && req.method === "POST") {
         const data = await getRequestBody(req);
         const { ocorrencia_ids } = data;
@@ -641,6 +653,7 @@ const server = http.createServer(async (req, res) => {
           return;
         }
         const stats = await Confirmacao.getEstatisticasMultiples(ocorrencia_ids);
+        console.log("📊 Stats retornados:", stats); // ← ADICIONE ESTA LINHA
         sendJSON(res, 200, stats);
         return;
       }
