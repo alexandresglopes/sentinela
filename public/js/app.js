@@ -2276,7 +2276,6 @@
       return;
     }
 
-    // Versão desktop (tabela)
     let htmlDesktop = `
       <table class="tabela-denuncias" style="width:100%; border-collapse: collapse;">
         <thead>
@@ -2291,59 +2290,55 @@
         <tbody>
     `;
 
-    // Versão mobile (cards)
     let htmlMobile = `<div class="denuncias-cards">`;
 
     denuncias.forEach(d => {
-      // Linha da tabela (desktop)
       htmlDesktop += `
         <tr class="tabela-row" style="border-bottom: 1px solid var(--border-soft);">
           <td style="padding:12px 8px; font-family: monospace; font-size: 0.9rem;">${d.codigo_anonimo}</td>
           <td style="padding:12px 8px;">${d.tipo_nome}</td>
           <td style="padding:12px 8px;">${d.bairro}</td>
           <td style="padding:12px 8px;">
-            <span class="mini-badge badge--${d.severidade_id === 'alto' ? 'alto' : d.severidade_id === 'medio' ? 'medio' : 'baixo'}">${d.status}</span>
+            <span class="mini-badge badge--${d.status === 'aberta' ? 'baixo' : d.status === 'em_analise' ? 'medio' : 'alto'}">${d.status}</span>
           </td>
           <td style="padding:12px 8px;">
-            <select class="select status-select" data-id="${d.id}" style="padding: 6px 10px; font-size: 0.85rem; min-width: 140px;">
+            <select class="select status-select" data-id="${d.id}" style="padding: 6px 10px; font-size: 0.85rem; width: 100%; margin-bottom: 8px;">
               <option value="aberta" ${d.status === 'aberta' ? 'selected' : ''}>Aberta</option>
               <option value="em_analise" ${d.status === 'em_analise' ? 'selected' : ''}>Em Análise</option>
               <option value="resolvida" ${d.status === 'resolvida' ? 'selected' : ''}>Resolvida</option>
               <option value="arquivada" ${d.status === 'arquivada' ? 'selected' : ''}>Arquivada</option>
             </select>
+            <div class="btn-group-acoes">
+              <button class="btn-acao-painel btn-acao-detalhes" data-id="${d.id}" data-codigo="${d.codigo_anonimo}">Detalhes</button>
+              <button class="btn-acao-painel btn-acao-chat" data-id="${d.id}" data-codigo="${d.codigo_anonimo}">Chat</button>
+              <button class="btn-acao-painel btn-acao-historico" data-id="${d.id}">Histórico</button>
+            </div>
           </td>
         </tr>
       `;
 
-      // Card (mobile)
       htmlMobile += `
-        <div class="denuncia-card">
-          <div class="denuncia-card-header">
-            <span class="denuncia-codigo">${d.codigo_anonimo}</span>
-            <span class="mini-badge badge--${d.severidade_id === 'alto' ? 'alto' : d.severidade_id === 'medio' ? 'medio' : 'baixo'}">${d.status}</span>
+        <div class="denuncia-card" style="background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px; padding: 16px; margin-bottom: 16px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+            <span style="font-family: monospace; font-weight: bold;">${d.codigo_anonimo}</span>
+            <span class="mini-badge badge--${d.status === 'aberta' ? 'baixo' : d.status === 'em_analise' ? 'medio' : 'alto'}">${d.status}</span>
           </div>
-          <div class="denuncia-card-body">
-            <div class="denuncia-info">
-              <span class="denuncia-label">Tipo:</span>
-              <span class="denuncia-value">${d.tipo_nome}</span>
-            </div>
-            <div class="denuncia-info">
-              <span class="denuncia-label">Bairro:</span>
-              <span class="denuncia-value">${d.bairro}</span>
-            </div>
-            <div class="denuncia-info">
-              <span class="denuncia-label">Data:</span>
-              <span class="denuncia-value">${new Date(d.created_at).toLocaleDateString('pt-BR')}</span>
-            </div>
-          </div>
-          <div class="denuncia-card-footer">
-            <label style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 6px;">Alterar status:</label>
-            <select class="select status-select" data-id="${d.id}" style="width: 100%; padding: 10px; font-size: 0.95rem;">
-              <option value="aberta" ${d.status === 'aberta' ? 'selected' : ''}>Aberta</option>
-              <option value="em_analise" ${d.status === 'em_analise' ? 'selected' : ''}>Em Análise</option>
-              <option value="resolvida" ${d.status === 'resolvida' ? 'selected' : ''}>Resolvida</option>
-              <option value="arquivada" ${d.status === 'arquivada' ? 'selected' : ''}>Arquivada</option>
-            </select>
+          <div style="font-size: 0.9rem; margin-bottom: 8px;"><strong>Tipo:</strong> ${d.tipo_nome}</div>
+          <div style="font-size: 0.9rem; margin-bottom: 8px;"><strong>Bairro:</strong> ${d.bairro}</div>
+          <div style="font-size: 0.9rem; margin-bottom: 16px;"><strong>Data:</strong> ${new Date(d.created_at).toLocaleDateString('pt-BR')}</div>
+          
+          <label style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 6px; display: block;">Alterar status:</label>
+          <select class="select status-select" data-id="${d.id}" style="width: 100%; padding: 10px; font-size: 0.95rem; margin-bottom: 12px;">
+            <option value="aberta" ${d.status === 'aberta' ? 'selected' : ''}>Aberta</option>
+            <option value="em_analise" ${d.status === 'em_analise' ? 'selected' : ''}>Em Análise</option>
+            <option value="resolvida" ${d.status === 'resolvida' ? 'selected' : ''}>Resolvida</option>
+            <option value="arquivada" ${d.status === 'arquivada' ? 'selected' : ''}>Arquivada</option>
+          </select>
+          
+          <div class="btn-group-acoes">
+            <button class="btn-acao-painel btn-acao-detalhes" data-id="${d.id}" data-codigo="${d.codigo_anonimo}">Detalhes</button>
+            <button class="btn-acao-painel btn-acao-chat" data-id="${d.id}" data-codigo="${d.codigo_anonimo}">Chat</button>
+            <button class="btn-acao-painel btn-acao-historico" data-id="${d.id}">Histórico</button>
           </div>
         </div>
       `;
@@ -2352,53 +2347,47 @@
     htmlDesktop += `</tbody></table>`;
     htmlMobile += `</div>`;
 
-    container.innerHTML = `
-      <div class="tabela-desktop">${htmlDesktop}</div>
-      <div class="tabela-mobile">${htmlMobile}</div>
-    `;
+    container.innerHTML = `<div class="tabela-desktop">${htmlDesktop}</div><div class="tabela-mobile">${htmlMobile}</div>`;
 
-    // Adiciona event listeners para ambos (desktop e mobile)
+
     container.querySelectorAll(".status-select").forEach(select => {
       select.addEventListener("change", async (e) => {
         const id = e.target.dataset.id;
         const status = e.target.value;
-
         select.disabled = true;
-        select.style.opacity = "0.6";
-
         try {
           const res = await fetch(`/api/painel/denuncias/${id}`, {
             method: "PUT",
-            headers: {
-              "Content-Type": "application/json",
-              "Authorization": "Bearer " + token
-            },
+            headers: { "Content-Type": "application/json", "Authorization": "Bearer " + token },
             body: JSON.stringify({ status })
           });
-
           if (res.ok) {
             showToast("Status atualizado");
-            // Atualiza badge no card mobile
-            const card = select.closest(".denuncia-card");
-            if (card) {
-              const badge = card.querySelector(".mini-badge");
-              if (badge) {
-                badge.textContent = status;
-                badge.className = `mini-badge badge--${status === 'aberta' ? 'baixo' : status === 'em_analise' ? 'medio' : 'alto'}`;
-              }
-            }
             fetchDenuncias(token);
           } else {
             showToast("Erro ao atualizar");
             select.disabled = false;
-            select.style.opacity = "1";
           }
         } catch (err) {
           showToast("Erro de conexão");
           select.disabled = false;
-          select.style.opacity = "1";
         }
       });
+    });
+
+
+    container.querySelectorAll(".btn-acao-detalhes").forEach(btn => {
+      btn.addEventListener("click", () => abrirModalDetalhes(btn.dataset.id, token));
+    });
+
+
+    container.querySelectorAll(".btn-acao-chat").forEach(btn => {
+      btn.addEventListener("click", () => abrirModalChatInvestigador(btn.dataset.id, btn.dataset.codigo, token));
+    });
+
+
+    container.querySelectorAll(".btn-acao-historico").forEach(btn => {
+      btn.addEventListener("click", () => abrirModalTimeline(btn.dataset.id, token));
     });
   }
 
@@ -2744,6 +2733,135 @@
       document.addEventListener("DOMContentLoaded", init);
     } else {
       init();
+    }
+  }
+
+    
+  async function abrirModalDetalhes(id, token) {
+   
+    
+    const modalHTML = `
+      <div class="modal-overlay" id="modal-detalhes-overlay" style="display:flex; z-index: 2000;">
+        <div class="modal-content" style="max-width: 600px;">
+          <div class="modal-header">
+            <h3 class="modal-title">Detalhes da Denúncia</h3>
+            <button class="modal-close" onclick="document.getElementById('modal-detalhes-overlay').remove()">✕</button>
+          </div>
+          <div id="detalhes-body" style="padding: 20px; text-align: center; color: var(--text-muted);">
+            Carregando detalhes...
+          </div>
+        </div>
+      </div>
+    `;
+    document.body.insertAdjacentHTML("beforeend", modalHTML);
+
+    try {    
+      
+      document.getElementById("detalhes-body").innerHTML = `
+        <p style="color: var(--warning);">
+          <strong>Nota:</strong> Para exibir todos os detalhes (como descrição completa), 
+          certifique-se de que o backend possui a rota <code>GET /api/painel/denuncias/:id</code>.<br><br>
+          Enquanto isso, use o botão "Chat" ou "Histórico" para obter todas as informações do caso.
+        </p>
+      `;
+    } catch (err) {
+      document.getElementById("detalhes-body").innerHTML = `<p style="color: var(--danger);">Erro ao carregar detalhes.</p>`;
+    }
+  }
+
+  
+  let chatInvestigadorAtual = { id: null, codigo: null };
+
+  async function abrirModalChatInvestigador(denunciaId, codigo, token) {
+    chatInvestigadorAtual = { id: denunciaId, codigo: codigo };
+
+    const modalHTML = `
+      <div class="modal-overlay" id="modal-chat-inv-overlay" style="display:flex; z-index: 2000;">
+        <div class="modal-content" style="max-width: 600px; height: 500px; display: flex; flex-direction: column;">
+          <div class="modal-header">
+            <h3 class="modal-title">Chat com Denunciante <span style="font-size:0.8rem; color:var(--primary); margin-left:8px;">${codigo}</span></h3>
+            <button class="modal-close" onclick="document.getElementById('modal-chat-inv-overlay').remove()">✕</button>
+          </div>
+          <div class="chat-investigador-container" style="flex: 1; display: flex; flex-direction: column;">
+            <div class="chat-investigador-messages" id="chat-inv-messages">
+              <p style="text-align: center; color: var(--text-muted); margin-top: 20px;">Carregando mensagens...</p>
+            </div>
+            <div class="chat-investigador-input">
+              <input type="text" id="chat-inv-input" placeholder="Escreva sua resposta..." onkeypress="if(event.key==='Enter') enviarMensagemInvestigador()">
+              <button onclick="enviarMensagemInvestigador()">Enviar</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+    document.body.insertAdjacentHTML("beforeend", modalHTML);
+
+    await carregarMensagensChatInvestigador();
+  }
+
+  async function carregarMensagensChatInvestigador() {
+    const messagesDiv = document.getElementById("chat-inv-messages");
+    if (!messagesDiv) return;
+
+    try {
+      const res = await fetch(`/api/chat-by-codigo/${encodeURIComponent(chatInvestigadorAtual.codigo)}`);
+      const data = await res.json();
+
+      messagesDiv.innerHTML = "";
+      
+      if (data.mensagens && data.mensagens.length > 0) {
+        data.mensagens.forEach(msg => {
+          const div = document.createElement("div");
+          if (msg.autor === "system") {
+            div.className = "chat-msg-inv system";
+            div.textContent = msg.texto;
+          } else {
+            div.className = `chat-msg-inv ${msg.autor === 'in' ? 'investigador' : 'denunciante'}`;
+            div.innerHTML = `${msg.texto}<span class="hora-msg">${msg.hora || ''}</span>`;
+          }
+          messagesDiv.appendChild(div);
+        });
+        messagesDiv.scrollTop = messagesDiv.scrollHeight;
+      } else {
+        messagesDiv.innerHTML = `<p style="text-align: center; color: var(--text-muted);">Nenhuma mensagem ainda. Seja o primeiro a responder.</p>`;
+      }
+    } catch (err) {
+      messagesDiv.innerHTML = `<p style="text-align: center; color: var(--danger);">Erro ao carregar chat.</p>`;
+    }
+  }
+
+  async function enviarMensagemInvestigador() {
+    const input = document.getElementById("chat-inv-input");
+    const texto = input.value.trim();
+    if (!texto || !chatInvestigadorAtual.id) return;
+
+    const agora = new Date();
+    const hora = String(agora.getHours()).padStart(2, "0") + ":" + String(agora.getMinutes()).padStart(2, "0");
+
+    
+    const messagesDiv = document.getElementById("chat-inv-messages");
+    const div = document.createElement("div");
+    div.className = "chat-msg-inv investigador";
+    div.innerHTML = `${texto}<span class="hora-msg">${hora}</span>`;
+    messagesDiv.appendChild(div);
+    messagesDiv.scrollTop = messagesDiv.scrollHeight;
+    input.value = "";
+
+    
+    try {
+      await fetch("/api/chat-mensagem", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          denuncia_id: chatInvestigadorAtual.id,
+          autor: "in", 
+          texto: texto,
+          hora: hora
+        })
+      });
+    } catch (err) {
+      console.error("Erro ao enviar mensagem:", err);
+      showToast("Erro ao enviar mensagem");
     }
   }
 })();
