@@ -2863,5 +2863,5 @@
       console.error("Erro ao enviar mensagem:", err);
       showToast("Erro ao enviar mensagem");
     }
-  }
+  } 
 })();
