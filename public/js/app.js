@@ -719,7 +719,7 @@
       return;
     }
 
-    // Remove marcadores antigos
+    
     mapMarkers.forEach((m) => m.setMap(null));
     mapMarkers = [];
 
@@ -733,7 +733,7 @@
     list.forEach((o, index) => {
       console.log(`Marcador ${index + 1}:`, o);
 
-      // Verifica se tem coordenadas válidas
+      
       if (!o.lat || !o.lng) {
         console.warn(`❌ Ocorrência ${o.id} sem coordenadas válidas:`, o);
         return;
