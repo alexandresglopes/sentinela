@@ -616,7 +616,9 @@
       <div class="modal-content" style="max-width: 600px; height: 500px; display: flex; flex-direction: column;">
         <div class="modal-header">
           <h3 class="modal-title">Chat com Denunciante <span style="font-size:0.8rem; color:var(--primary); margin-left:8px;">${codigo}</span></h3>
-          <button class="modal-close" id="btn-fechar-chat-inv" style="color:#ef5a63; font-weight: bold;" type="button">✕</button>
+          <!--button class="modal-close" id="btn-fechar-chat-inv" style="color:#ef5a63; font-weight: bold;" type="button" aria-label="Fechar">✕</button-->
+
+          <button class="modal-close" id="btn-fechar-chat-inv" type="button" aria-label="Fechar">✕</button>
         </div>
         <div class="chat-investigador-container" style="flex: 1; display: flex; flex-direction: column;">
           <div class="chat-investigador-messages" id="chat-inv-messages">
@@ -657,7 +659,8 @@
       <div class="modal-content" style="max-width: 600px; height: 500px; display: flex; flex-direction: column;">
         <div class="modal-header">
           <h3 class="modal-title">Chat com Denunciante <span style="font-size:0.8rem; color:var(--primary); margin-left:8px;">${codigo}</span></h3>
-          <button class="modal-close" id="modal-chat-close-btn" style="color:#ef5a63; font-weight: bold;" type="button"></button>
+          <!--button class="modal-close" id="modal-chat-close-btn" style="color:#ef5a63; font-weight: bold;" type="button"></button-->
+          <button class="modal-close" id="modal-chat-close-btn" type="button" aria-label="Fechar">✕</button>
         </div>
         <div class="chat-investigador-container" style="flex: 1; display: flex; flex-direction: column;">
           <div class="chat-investigador-messages" id="chat-inv-messages">
