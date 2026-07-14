@@ -220,7 +220,7 @@
       return `<section class="page-head"><div class="container"><h1 class="page-title">Acompanhar denúncia</h1><p class="page-sub">Informe o código anônimo recebido para acessar o chat seguro.</p></div></section><section class="container"><div class="chat-layout"><form class="card card--pad-lg" id="form-codigo"><div class="field"><label for="codigo">Código anônimo</label><div class="input-group"><span class="input-prefix">DNC-</span><input class="input input-with-prefix" id="codigo" type="text" placeholder="Ex.: 4821" autocomplete="off" required maxlength="4" pattern="[0-9]*" /></div></div><button class="btn btn--primary btn--lg btn--block" type="submit">${icon("chat", 18)} Acessar chat seguro</button></form></div></section>`;
     }
 
-    
+
     return `
     <section class="page-head">
       <div class="container page-head__row">
@@ -410,7 +410,86 @@
       });
       return;
     }
-    initChat(codigo);
+
+    
+    setTimeout(() => {
+      
+      const tabs = $$(".chat-tab");
+      tabs.forEach(tab => {
+        
+        const newTab = tab.cloneNode(true);
+        tab.parentNode.replaceChild(newTab, tab);
+
+        newTab.addEventListener("click", () => {
+          tabs.forEach(t => t.classList.remove("is-active"));
+          newTab.classList.add("is-active");
+
+          const tabName = newTab.dataset.tab;
+          $$(".chat-tab-content").forEach(content => {
+            content.style.display = "none";
+          });
+          document.getElementById(`tab-${tabName}`).style.display = "block";
+
+          
+          if (tabName === "historico") {
+            carregarTimelinePublica(codigo);
+          }
+        });
+      });
+
+      
+      initChat(codigo);
+    }, 100);
+  }
+
+  async function carregarTimelinePublica(codigo) {
+    const container = document.getElementById("timeline-publica");
+    if (!container) {
+      console.error("Container da timeline não encontrado");
+      return;
+    }
+
+    container.innerHTML = `<p style="text-align: center; color: var(--text-muted); padding: 20px;">Carregando histórico...</p>`;
+
+    try {
+      console.log("Buscando timeline para:", codigo);
+      const res = await fetch(`/api/timeline-publica/${encodeURIComponent(codigo)}`);
+
+      if (!res.ok) {
+        throw new Error(`Erro ${res.status}: ${res.statusText}`);
+      }
+
+      const eventos = await res.json();
+      console.log("Eventos recebidos:", eventos);
+
+      if (!eventos || eventos.length === 0) {
+        container.innerHTML = `<p style="text-align: center; color: var(--text-muted); padding: 20px;">Nenhum evento registrado ainda.</p>`;
+        return;
+      }
+
+      container.innerHTML = eventos.map((e, index) => {
+        const data = new Date(e.created_at);
+        const hora = data.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+        const dataFormatada = data.toLocaleDateString('pt-BR');
+        const isLast = index === eventos.length - 1;
+
+        return `
+        <div class="timeline-item ${isLast ? 'timeline-item--last' : ''}">
+          <div class="timeline-marker"></div>
+          <div class="timeline-content">
+            <div class="timeline-evento">${e.evento}</div>
+            <div class="timeline-meta">
+              <span>🕐 ${hora} · ${dataFormatada}</span>
+              <span> ${e.autor || 'Sistema'}</span>
+            </div>
+          </div>
+        </div>
+      `;
+      }).join("");
+    } catch (err) {
+      console.error("Erro ao carregar timeline:", err);
+      container.innerHTML = `<p style="text-align: center; color: var(--danger); padding: 20px;">Erro ao carregar histórico: ${err.message}</p>`;
+    }
   }
 
   async function initChat(codigo) {
