@@ -56,7 +56,8 @@
       };
 
       const script = document.createElement("script");
-      script.src = `https://maps.googleapis.com/maps/api/js?key=${config.googleMapsApiKey}&libraries=visualization&callback=initGoogleMaps`;
+      //script.src = `https://maps.googleapis.com/maps/api/js?key=${config.googleMapsApiKey}&libraries=visualization&callback=initGoogleMaps`;
+      script.src = `https://maps.googleapis.com/maps/api/js?key=AIzaSyDifFEnop3OBO50K0ovtbna0YSZHhp7uLg&libraries=visualization&callback=initGoogleMaps`;
       script.async = true;
       script.defer = true;
       script.id = "google-maps-script";
