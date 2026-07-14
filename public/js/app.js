@@ -607,48 +607,48 @@
 
   let chatInvestigadorAtual = { id: null, codigo: null };
 
-  // Substitua a função abrirModalChatInvestigador por esta:
-  async function abrirModalChatInvestigador(denunciaId, codigo, token) {
-    chatInvestigadorAtual = { id: Number(denunciaId), codigo: codigo };
+  
+  // async function abrirModalChatInvestigador(denunciaId, codigo, token) {
+  //   chatInvestigadorAtual = { id: Number(denunciaId), codigo: codigo };
 
-    const modalHTML = `
-    <div class="modal-overlay" id="modal-chat-inv-overlay" style="display:flex; z-index: 2000;">
-      <div class="modal-content" style="max-width: 600px; height: 500px; display: flex; flex-direction: column;">
-        <div class="modal-header">
-          <h3 class="modal-title">Chat com Denunciante <span style="font-size:0.8rem; color:var(--primary); margin-left:8px;">${codigo}</span></h3>
-          <!--button class="modal-close" id="btn-fechar-chat-inv" style="color:#ef5a63; font-weight: bold;" type="button" aria-label="Fechar">✕</button-->
+  //   const modalHTML = `
+  //   <div class="modal-overlay" id="modal-chat-inv-overlay" style="display:flex; z-index: 2000;">
+  //     <div class="modal-content" style="max-width: 600px; height: 500px; display: flex; flex-direction: column;">
+  //       <div class="modal-header">
+  //         <h3 class="modal-title">Chat com Denunciante <span style="font-size:0.8rem; color:var(--primary); margin-left:8px;">${codigo}</span></h3>
+  //         <!--button class="modal-close" id="btn-fechar-chat-inv" style="color:#ef5a63; font-weight: bold;" type="button" aria-label="Fechar">✕</button-->
 
-          <button class="modal-close" id="btn-fechar-chat-inv" type="button" aria-label="Fechar">✕</button>
-        </div>
-        <div class="chat-investigador-container" style="flex: 1; display: flex; flex-direction: column;">
-          <div class="chat-investigador-messages" id="chat-inv-messages">
-            <p style="text-align: center; color: var(--text-muted); margin-top: 20px;">Carregando mensagens...</p>
-          </div>
-          <div class="chat-investigador-input">
-            <input type="text" id="chat-inv-input" placeholder="Escreva sua resposta...">
-            <button id="btn-enviar-chat-inv">Enviar</button>
-          </div>
-        </div>
-      </div>
-    </div>`;
-    document.body.insertAdjacentHTML("beforeend", modalHTML);
+  //         <button class="modal-close" id="btn-fechar-chat-inv" type="button" aria-label="Fechar">✕</button>
+  //       </div>
+  //       <div class="chat-investigador-container" style="flex: 1; display: flex; flex-direction: column;">
+  //         <div class="chat-investigador-messages" id="chat-inv-messages">
+  //           <p style="text-align: center; color: var(--text-muted); margin-top: 20px;">Carregando mensagens...</p>
+  //         </div>
+  //         <div class="chat-investigador-input">
+  //           <input type="text" id="chat-inv-input" placeholder="Escreva sua resposta...">
+  //           <button id="btn-enviar-chat-inv">Enviar</button>
+  //         </div>
+  //       </div>
+  //     </div>
+  //   </div>`;
+  //   document.body.insertAdjacentHTML("beforeend", modalHTML);
 
-    // Adiciona os event listeners
-    document.getElementById("btn-fechar-chat-inv").addEventListener("click", () => {
-      document.getElementById("modal-chat-inv-overlay").remove();
-    });
+  //   // Adiciona os event listeners
+  //   document.getElementById("btn-fechar-chat-inv").addEventListener("click", () => {
+  //     document.getElementById("modal-chat-inv-overlay").remove();
+  //   });
 
-    document.getElementById("btn-enviar-chat-inv").addEventListener("click", enviarMensagemInvestigador);
+  //   document.getElementById("btn-enviar-chat-inv").addEventListener("click", enviarMensagemInvestigador);
 
-    document.getElementById("chat-inv-input").addEventListener("keypress", (e) => {
-      if (e.key === "Enter") {
-        e.preventDefault();
-        enviarMensagemInvestigador();
-      }
-    });
+  //   document.getElementById("chat-inv-input").addEventListener("keypress", (e) => {
+  //     if (e.key === "Enter") {
+  //       e.preventDefault();
+  //       enviarMensagemInvestigador();
+  //     }
+  //   });
 
-    await carregarMensagensChatInvestigador();
-  }
+  //   await carregarMensagensChatInvestigador();
+  // }
 
 
   async function abrirModalChatInvestigador(denunciaId, codigo, token) {
