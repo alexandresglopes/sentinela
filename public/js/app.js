@@ -241,7 +241,7 @@
   let chartsInstances = {};
   function initDashboard() {
     fetch("/api/dashboard").then(res => res.json()).then(data => {
-        // Simplificado para o exemplo, mantenha sua lógica original de gráficos se preferir
+      // Simplificado para o exemplo, mantenha sua lógica original de gráficos se preferir
     }).catch(err => console.error(err));
   }
   function initPrevisao() { /* Mantenha sua lógica original */ }
@@ -302,7 +302,7 @@
     const map = new google.maps.Map(mapElement, { center: { lat: DATA.center[0], lng: DATA.center[1] }, zoom: DATA.zoom });
     window.__sentinelaMap = map;
     renderMarkers(map);
-    
+
     $$("#filtro-severidade .chip").forEach((chip) => {
       chip.addEventListener("click", () => {
         const s = chip.dataset.sev;
@@ -374,7 +374,7 @@
         div.textContent = texto;
       } else {
         div.className = "bubble " + (autor === "out" ? "bubble--out" : "bubble--in");
-        div.innerHTML = `${texto}<span class="bubble__time">${hora || new Date().toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'})}</span>`;
+        div.innerHTML = `${texto}<span class="bubble__time">${hora || new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>`;
       }
       body.appendChild(div);
       body.scrollTop = body.scrollHeight;
@@ -396,7 +396,7 @@
       e.preventDefault();
       const val = input.value.trim();
       if (!val || !denunciaId) return;
-      const horaEnvio = new Date().toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'});
+      const horaEnvio = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
       addBubble({ autor: "out", texto: val, hora: horaEnvio });
       input.value = "";
 
@@ -489,7 +489,7 @@
 
     denuncias.forEach(d => {
       const badgeClass = d.status === 'aberta' ? 'baixo' : d.status === 'em_analise' ? 'medio' : 'alto';
-      
+
       htmlDesktop += `
         <tr class="tabela-row" style="border-bottom: 1px solid var(--border-soft);">
           <td style="padding:12px 8px; font-family: monospace;">${d.codigo_anonimo}</td>
@@ -607,29 +607,87 @@
 
   let chatInvestigadorAtual = { id: null, codigo: null };
 
+  // Substitua a função abrirModalChatInvestigador por esta:
   async function abrirModalChatInvestigador(denunciaId, codigo, token) {
     chatInvestigadorAtual = { id: Number(denunciaId), codigo: codigo };
 
     const modalHTML = `
-      <div class="modal-overlay" id="modal-chat-inv-overlay" style="display:flex; z-index: 2000;">
-        <div class="modal-content" style="max-width: 600px; height: 500px; display: flex; flex-direction: column;">
-          <div class="modal-header">
-            <h3 class="modal-title">Chat com Denunciante <span style="font-size:0.8rem; color:var(--primary); margin-left:8px;">${codigo}</span></h3>
-            <button class="modal-close" onclick="document.getElementById('modal-chat-inv-overlay').remove()">✕</button>
+    <div class="modal-overlay" id="modal-chat-inv-overlay" style="display:flex; z-index: 2000;">
+      <div class="modal-content" style="max-width: 600px; height: 500px; display: flex; flex-direction: column;">
+        <div class="modal-header">
+          <h3 class="modal-title">Chat com Denunciante <span style="font-size:0.8rem; color:var(--primary); margin-left:8px;">${codigo}</span></h3>
+          <button class="modal-close" id="btn-fechar-chat-inv" type="button">✕</button>
+        </div>
+        <div class="chat-investigador-container" style="flex: 1; display: flex; flex-direction: column;">
+          <div class="chat-investigador-messages" id="chat-inv-messages">
+            <p style="text-align: center; color: var(--text-muted); margin-top: 20px;">Carregando mensagens...</p>
           </div>
-          <div class="chat-investigador-container" style="flex: 1; display: flex; flex-direction: column;">
-            <div class="chat-investigador-messages" id="chat-inv-messages">
-              <p style="text-align: center; color: var(--text-muted); margin-top: 20px;">Carregando mensagens...</p>
-            </div>
-            <div class="chat-investigador-input">
-              <input type="text" id="chat-inv-input" placeholder="Escreva sua resposta..." onkeypress="if(event.key==='Enter') { event.preventDefault(); enviarMensagemInvestigador(); }">
-              <button onclick="enviarMensagemInvestigador()">Enviar</button>
-            </div>
+          <div class="chat-investigador-input">
+            <input type="text" id="chat-inv-input" placeholder="Escreva sua resposta...">
+            <button id="btn-enviar-chat-inv">Enviar</button>
           </div>
         </div>
-      </div>`;
+      </div>
+    </div>`;
     document.body.insertAdjacentHTML("beforeend", modalHTML);
+
+    // Adiciona os event listeners
+    document.getElementById("btn-fechar-chat-inv").addEventListener("click", () => {
+      document.getElementById("modal-chat-inv-overlay").remove();
+    });
+
+    document.getElementById("btn-enviar-chat-inv").addEventListener("click", enviarMensagemInvestigador);
+
+    document.getElementById("chat-inv-input").addEventListener("keypress", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        enviarMensagemInvestigador();
+      }
+    });
+
     await carregarMensagensChatInvestigador();
+  }
+
+  
+  async function enviarMensagemInvestigador() {
+    const input = document.getElementById("chat-inv-input");
+    const texto = input.value.trim();
+    if (!texto || !chatInvestigadorAtual.id) return;
+
+    const agora = new Date();
+    const hora = String(agora.getHours()).padStart(2, "0") + ":" + String(agora.getMinutes()).padStart(2, "0");
+
+    
+    const messagesDiv = document.getElementById("chat-inv-messages");
+    const div = document.createElement("div");
+    div.className = "chat-msg-inv investigador";
+    div.innerHTML = `${texto}<span class="hora-msg">${hora}</span>`;
+    messagesDiv.appendChild(div);
+    messagesDiv.scrollTop = messagesDiv.scrollHeight;
+    input.value = "";
+
+    
+    try {
+      const response = await fetch("/api/chat-mensagem", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          denuncia_id: Number(chatInvestigadorAtual.id),
+          autor: "in",
+          texto: texto,
+          hora: hora
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error("Falha no servidor");
+      }
+    } catch (err) {
+      console.error("Erro ao enviar mensagem:", err);
+      showToast("Erro ao enviar mensagem. Tente novamente.");
+      // Remove a mensagem da tela se falhar
+      messagesDiv.removeChild(div);
+    }
   }
 
   async function carregarMensagensChatInvestigador() {
@@ -640,7 +698,7 @@
       const res = await fetch(`/api/chat-by-codigo/${encodeURIComponent(chatInvestigadorAtual.codigo)}`);
       const data = await res.json();
       messagesDiv.innerHTML = "";
-      
+
       if (data.mensagens && data.mensagens.length > 0) {
         data.mensagens.forEach(msg => {
           const div = document.createElement("div");
@@ -691,7 +749,7 @@
           hora: hora
         })
       });
-      
+
       if (!response.ok) {
         throw new Error("Falha no servidor");
       }
@@ -724,7 +782,7 @@
       const res = await fetch(`/api/timeline/${denunciaId}`, { headers: { "Authorization": "Bearer " + token } });
       if (!res.ok) throw new Error("Erro ao buscar");
       const eventos = await res.json();
-      
+
       const body = document.getElementById("timeline-body");
       if (!eventos || eventos.length === 0) {
         body.innerHTML = `<p style="text-align: center; color: var(--text-muted);">Nenhum evento registrado ainda.</p>`;
