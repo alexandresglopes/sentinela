@@ -56,8 +56,7 @@
       };
 
       const script = document.createElement("script");
-      //script.src = `https://maps.googleapis.com/maps/api/js?key=${config.googleMapsApiKey}&libraries=visualization&callback=initGoogleMaps`;
-      script.src = `https://maps.googleapis.com/maps/api/js?key=AIzaSyDifFEnop3OBO50K0ovtbna0YSZHhp7uLg&libraries=visualization&callback=initGoogleMaps`;
+      script.src = `https://maps.googleapis.com/maps/api/js?key=${config.googleMapsApiKey}&libraries=visualization&callback=initGoogleMaps`;      
       script.async = true;
       script.defer = true;
       script.id = "google-maps-script";
@@ -165,7 +164,7 @@
         <div class="container hero__grid">
           <div>
             <span class="eyebrow">${icon("shield", 14)} Segurança pública colaborativa</span>
-            <h1 class="hero__title">Cidades.. mais seguras com <span>dados</span> e <span>participação cidadã</span></h1>
+            <h1 class="hero__title">Cidades... mais seguras com <span>dados</span> e <span>participação cidadã</span></h1>
             <p class="hero__lead">O Sentinela integra o mapeamento de ocorrências em tempo real com um canal de denúncias anônimas protegido.</p>
             <div class="hero__cta">
               <a href="#/mapa" class="btn btn--primary btn--lg" data-nav>${icon("map", 18)} Ver mapa de ocorrências</a>
