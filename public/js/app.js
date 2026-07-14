@@ -219,7 +219,61 @@
     if (!codigo) {
       return `<section class="page-head"><div class="container"><h1 class="page-title">Acompanhar denúncia</h1><p class="page-sub">Informe o código anônimo recebido para acessar o chat seguro.</p></div></section><section class="container"><div class="chat-layout"><form class="card card--pad-lg" id="form-codigo"><div class="field"><label for="codigo">Código anônimo</label><div class="input-group"><span class="input-prefix">DNC-</span><input class="input input-with-prefix" id="codigo" type="text" placeholder="Ex.: 4821" autocomplete="off" required maxlength="4" pattern="[0-9]*" /></div></div><button class="btn btn--primary btn--lg btn--block" type="submit">${icon("chat", 18)} Acessar chat seguro</button></form></div></section>`;
     }
-    return `<section class="page-head"><div class="container page-head__row"><div><h1 class="page-title">Chat seguro</h1><p class="page-sub">Denúncia <strong>${codigo}</strong> · comunicação criptografada e anônima.</p></div><a href="#/acompanhar" class="btn btn--ghost btn--sm" data-nav>Trocar código</a></div></section><section class="container"><div class="chat-layout"><div class="chat"><div class="chat__head"><span class="chat__avatar">${icon("users")}</span><div class="chat__who"><strong>Investigador responsável</strong><span>Online</span></div><span class="chat__lock">${icon("lock", 15)} Criptografado</span></div><div class="chat__body" id="chat-body"></div><form class="chat__foot" id="chat-form"><input class="input" id="chat-input" type="text" placeholder="Escreva sua mensagem…" autocomplete="off" aria-label="Mensagem" /><button class="btn btn--primary" type="submit" aria-label="Enviar">${icon("send", 18)}</button></form></div></div></section>`;
+
+    
+    return `
+    <section class="page-head">
+      <div class="container page-head__row">
+        <div>
+          <h1 class="page-title">Acompanhar denúncia</h1>
+          <p class="page-sub">Denúncia <strong>${codigo}</strong> · comunicação criptografada e anônima.</p>
+        </div>
+        <a href="#/acompanhar" class="btn btn--ghost btn--sm" data-nav>Trocar código</a>
+      </div>
+    </section>
+    <section class="container">
+      <div class="chat-layout">
+        <div class="chat-tabs">
+          <button class="chat-tab is-active" data-tab="conversa">
+            ${icon("chat", 16)} Conversa
+          </button>
+          <button class="chat-tab" data-tab="historico">
+            ${icon("clock", 16)} Histórico
+          </button>
+        </div>
+        
+        <div class="chat-tab-content" id="tab-conversa">
+          <div class="chat">
+            <div class="chat__head">
+              <span class="chat__avatar">${icon("users")}</span>
+              <div class="chat__who">
+                <strong>Investigador responsável</strong>
+                <span>Online</span>
+              </div>
+              <span class="chat__lock">${icon("lock", 15)} Criptografado</span>
+            </div>
+            <div class="chat__body" id="chat-body"></div>
+            <form class="chat__foot" id="chat-form">
+              <input class="input" id="chat-input" type="text" placeholder="Escreva sua mensagem…" autocomplete="off" aria-label="Mensagem" />
+              <button class="btn btn--primary" type="submit" aria-label="Enviar">${icon("send", 18)}</button>
+            </form>
+          </div>
+        </div>
+        
+        <div class="chat-tab-content" id="tab-historico" style="display: none;">
+          <div class="timeline-card">
+            <div class="timeline-header">
+              <h3>${icon("clock", 20)} Linha do Tempo</h3>
+              <p>Todas as ações realizadas nesta denúncia</p>
+            </div>
+            <div class="timeline-container" id="timeline-publica">
+              <p style="text-align: center; color: var(--text-muted); padding: 20px;">Carregando histórico...</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  `;
   }
 
   function pageLogin() {
@@ -607,7 +661,7 @@
 
   let chatInvestigadorAtual = { id: null, codigo: null };
 
-  
+
   // async function abrirModalChatInvestigador(denunciaId, codigo, token) {
   //   chatInvestigadorAtual = { id: Number(denunciaId), codigo: codigo };
 
