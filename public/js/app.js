@@ -33,7 +33,7 @@
       const config = await response.json();
 
       if (!config.googleMapsApiKey) {
-        console.error("API Key não configurada");
+        console.error(" API Key não configurada");
         googleMapsCarregando = false;
         return;
       }
@@ -42,31 +42,33 @@
         googleMapsReady = true;
         googleMapsCarregado = true;
         googleMapsCarregando = false;
+        console.log("✅ Google Maps carregado com sucesso");
+
         if (parseHash().path === "mapa") {
           setTimeout(initMapa, 100);
         }
       };
 
       window.gm_authFailure = function () {
-        console.error("Falha na autenticação do Google Maps");
+        console.error(" Falha na autenticação do Google Maps - API Key inválida");
         googleMapsCarregando = false;
-        showToast("Erro: Chave do Google Maps inválida.");
+        showToast("Erro: Chave do Google Maps inválida. Verifique o console.");
       };
 
       const script = document.createElement("script");
-      script.src = `https://maps.googleapis.com/maps/api/js?key=${config.googleMapsApiKey}&libraries=visualization&callback=initGoogleMaps&v=weekly`;
+      script.src = `https://maps.googleapis.com/maps/api/js?key=${config.googleMapsApiKey}&libraries=visualization&callback=initGoogleMaps`;
       script.async = true;
       script.defer = true;
       script.id = "google-maps-script";
 
       script.onerror = () => {
-        console.error("Erro ao carregar script do Google Maps");
+        console.error("❌ Erro ao carregar script do Google Maps");
         googleMapsCarregando = false;
       };
 
       document.head.appendChild(script);
     } catch (error) {
-      console.error("Erro ao carregar Google Maps:", error);
+      console.error("❌ Erro ao carregar Google Maps:", error);
       googleMapsCarregando = false;
     }
   }
@@ -634,7 +636,7 @@
                 <h3 class="previsao-titulo">${p.tipo_nome}</h3>
                 <div class="previsao-info">
                   <div class="previsao-info-item">
-                    <span class="previsao-info-label">📅 Quando</span>
+                    <span class="previsao-info-label"> Quando</span>
                     <span class="previsao-info-value">${diaNome} · ${faixaNome}</span>
                   </div>
                   <div class="previsao-info-item">
@@ -686,16 +688,24 @@
   }
 
   async function renderMarkers(map) {
+    console.log("📍 Renderizando marcadores...");
     const DATA = window.SENTINELA_DATA;
-    if (!DATA) return;
+    if (!DATA) {
+      console.error("❌ SENTINELA_DATA não encontrado");
+      return;
+    }
 
     mapMarkers.forEach((m) => m.setMap(null));
     mapMarkers = [];
 
     const list = filteredOccurrences();
+    console.log(`📊 Ocorrências filtradas: ${list.length}`);
 
-    list.forEach((o) => {
-      if (!o.lat || !o.lng) return;
+    list.forEach((o, index) => {
+      if (!o.lat || !o.lng) {
+        console.warn(`⚠️ Ocorrência ${index} sem coordenadas:`, o);
+        return;
+      }
 
       const cor = DATA.severidades[o.severidade]?.cor || "#17b8a6";
 
@@ -729,23 +739,48 @@
       mapMarkers.push(marker);
     });
 
+    console.log(`✅ ${mapMarkers.length} marcadores renderizados`);
+
     if ($("#stat-total")) $("#stat-total").textContent = list.length;
     const alto = list.filter((o) => o.severidade === "alto").length;
     if ($("#stat-alto")) $("#stat-alto").textContent = alto;
   }
 
   function initMapa() {
+    console.log("🗺️ Iniciando mapa...");
     const DATA = window.SENTINELA_DATA;
-    if (!DATA || !googleMapsReady) { setTimeout(initMapa, 500); return; }
-    const mapElement = document.getElementById("map");
-    if (!mapElement) { setTimeout(initMapa, 500); return; }
-    if (window.__sentinelaMap) return;
+    if (!DATA) {
+      console.error("❌ Dados não carregados");
+      setTimeout(initMapa, 500);
+      return;
+    }
 
+    if (!googleMapsReady) {
+      console.log("⏳ Google Maps não está pronto...");
+      setTimeout(initMapa, 500);
+      return;
+    }
+
+    const mapElement = document.getElementById("map");
+    if (!mapElement) {
+      console.error(" Elemento #map não encontrado");
+      setTimeout(initMapa, 500);
+      return;
+    }
+
+    if (window.__sentinelaMap) {
+      console.log("ℹ️ Mapa já inicializado");
+      return;
+    }
+
+    console.log("📍 Criando mapa em:", DATA.center);
     const map = new google.maps.Map(mapElement, {
       center: { lat: DATA.center[0], lng: DATA.center[1] },
       zoom: DATA.zoom
     });
     window.__sentinelaMap = map;
+    console.log("✅ Mapa criado com sucesso!");
+
     renderMarkers(map);
 
     $$("#filtro-severidade .chip").forEach((chip) => {
@@ -856,7 +891,7 @@
             <div class="timeline-content">
               <div class="timeline-evento">${e.evento}</div>
               <div class="timeline-meta">
-                <span> ${hora} · ${dataFormatada}</span>
+                <span>🕐 ${hora} · ${dataFormatada}</span>
                 <span>👤 ${e.autor || 'Sistema'}</span>
               </div>
             </div>
@@ -1246,7 +1281,7 @@
         <div class="modal-content modal-timeline" style="max-width: 600px;">
           <div class="modal-header">
             <h3 class="modal-title">${icon("clock", 20)} Linha do Tempo</h3>
-            <button class="modal-close" id="modal-timeline-close" type="button" aria-label="Fechar">✕</button>
+            <button class="modal-close" id="modal-timeline-close" type="button" aria-label="Fechar"></button>
           </div>
           <div class="modal-body" id="timeline-body" style="padding: 20px; max-height: 400px; overflow-y: auto;">
             <p style="text-align: center; color: var(--text-muted);">Carregando histórico...</p>
