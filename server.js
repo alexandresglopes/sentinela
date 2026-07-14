@@ -361,22 +361,50 @@ const server = http.createServer(async (req, res) => {
         return;
       }
 
-      if (pathname === "/api/painel/denuncias" && req.method === "GET") {
-        const user = verifyToken(req);
-        if (!user) {
-          sendJSON(res, 401, { error: "Não autorizado" });
-          return;
-        }
+      // if (pathname === "/api/painel/denuncias" && req.method === "GET") {
+      //   const user = verifyToken(req);
+      //   if (!user) {
+      //     sendJSON(res, 401, { error: "Não autorizado" });
+      //     return;
+      //   }
+      //   const conexao = require("./config/conexao");
+      //   const db = conexao.promise();
+      //   const [rows] = await db.query(`
+      //     SELECT d.*, t.nome as tipo_nome, s.nome as severidade_nome
+      //     FROM denuncias d
+      //     JOIN tipos_ocorrencia t ON d.tipo_id = t.id
+      //     JOIN severidades s ON d.severidade_id = s.id
+      //     ORDER BY d.created_at DESC
+      //   `);
+      //   sendJSON(res, 200, rows);
+      //   return;
+      // }
+
+      
+      if (pathname.startsWith("/api/painel/denuncias/") && req.method === "GET") {
+        const denunciaId = pathname.split("/")[4];
+
         const conexao = require("./config/conexao");
         const db = conexao.promise();
-        const [rows] = await db.query(`
-          SELECT d.*, t.nome as tipo_nome, s.nome as severidade_nome
-          FROM denuncias d
-          JOIN tipos_ocorrencia t ON d.tipo_id = t.id
-          JOIN severidades s ON d.severidade_id = s.id
-          ORDER BY d.created_at DESC
-        `);
-        sendJSON(res, 200, rows);
+
+        try {
+          const [rows] = await db.query(`
+            SELECT d.*, t.nome as tipo_nome, s.nome as severidade_nome, s.cor as severidade_cor
+            FROM denuncias d
+            JOIN tipos_ocorrencia t ON d.tipo_id = t.id
+            JOIN severidades s ON d.severidade_id = s.id
+            WHERE d.id = ?
+          `, [denunciaId]);
+
+          if (rows.length === 0) {
+            sendJSON(res, 404, { error: "Denúncia não encontrada" });
+            return;
+          }
+
+          sendJSON(res, 200, rows[0]);
+        } catch (error) {
+          sendJSON(res, 500, { error: "Erro ao buscar denúncia", message: error.message });
+        }
         return;
       }
 

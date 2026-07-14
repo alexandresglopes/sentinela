@@ -2736,40 +2736,68 @@
     }
   }
 
-    
+
   async function abrirModalDetalhes(id, token) {
-   
-    
     const modalHTML = `
-      <div class="modal-overlay" id="modal-detalhes-overlay" style="display:flex; z-index: 2000;">
-        <div class="modal-content" style="max-width: 600px;">
-          <div class="modal-header">
-            <h3 class="modal-title">Detalhes da Denúncia</h3>
-            <button class="modal-close" onclick="document.getElementById('modal-detalhes-overlay').remove()">✕</button>
-          </div>
-          <div id="detalhes-body" style="padding: 20px; text-align: center; color: var(--text-muted);">
-            Carregando detalhes...
-          </div>
+    <div class="modal-overlay" id="modal-detalhes-overlay" style="display:flex; z-index: 2000;">
+      <div class="modal-content" style="max-width: 600px;">
+        <div class="modal-header">
+          <h3 class="modal-title">Detalhes da Denúncia</h3>
+          <button class="modal-close" onclick="document.getElementById('modal-detalhes-overlay').remove()">✕</button>
+        </div>
+        <div id="detalhes-body" style="padding: 20px; text-align: center; color: var(--text-muted);">
+          Carregando detalhes...
+        </div>
+      </div>
+    </div>
+  `;
+    document.body.insertAdjacentHTML("beforeend", modalHTML);
+
+    try {
+      const res = await fetch(`/api/painel/denuncias/${id}`, {
+        headers: { "Authorization": "Bearer " + token }
+      });
+
+      const data = await res.json();
+
+      document.getElementById("detalhes-body").innerHTML = `
+      <div style="text-align: left;">
+        <div style="margin-bottom: 16px;">
+          <strong style="color: var(--text-muted); font-size: 0.9rem;">Código:</strong>
+          <div style="font-family: monospace; color: var(--primary); font-size: 1.1rem;">${data.codigo_anonimo}</div>
+        </div>
+        <div style="margin-bottom: 16px;">
+          <strong style="color: var(--text-muted); font-size: 0.9rem;">Tipo:</strong>
+          <div>${data.tipo_nome}</div>
+        </div>
+        <div style="margin-bottom: 16px;">
+          <strong style="color: var(--text-muted); font-size: 0.9rem;">Bairro:</strong>
+          <div>${data.bairro}</div>
+        </div>
+        <div style="margin-bottom: 16px;">
+          <strong style="color: var(--text-muted); font-size: 0.9rem;">Status:</strong>
+          <div><span class="mini-badge badge--${data.status === 'aberta' ? 'baixo' : data.status === 'em_analise' ? 'medio' : 'alto'}">${data.status}</span></div>
+        </div>
+        <div style="margin-bottom: 16px;">
+          <strong style="color: var(--text-muted); font-size: 0.9rem;">Quando ocorreu:</strong>
+          <div>${data.quando_ocorreu ? new Date(data.quando_ocorreu).toLocaleString('pt-BR') : 'Não informado'}</div>
+        </div>
+        <div style="margin-bottom: 16px;">
+          <strong style="color: var(--text-muted); font-size: 0.9rem;">Registrado em:</strong>
+          <div>${new Date(data.created_at).toLocaleString('pt-BR')}</div>
+        </div>
+        <div style="margin-top: 24px; padding: 16px; background: var(--bg-soft); border-radius: 8px;">
+          <strong style="color: var(--text-muted); font-size: 0.9rem; display: block; margin-bottom: 8px;">Descrição:</strong>
+          <div style="color: var(--text); line-height: 1.6;">${data.descricao || 'Sem descrição'}</div>
         </div>
       </div>
     `;
-    document.body.insertAdjacentHTML("beforeend", modalHTML);
-
-    try {    
-      
-      document.getElementById("detalhes-body").innerHTML = `
-        <p style="color: var(--warning);">
-          <strong>Nota:</strong> Para exibir todos os detalhes (como descrição completa), 
-          certifique-se de que o backend possui a rota <code>GET /api/painel/denuncias/:id</code>.<br><br>
-          Enquanto isso, use o botão "Chat" ou "Histórico" para obter todas as informações do caso.
-        </p>
-      `;
     } catch (err) {
-      document.getElementById("detalhes-body").innerHTML = `<p style="color: var(--danger);">Erro ao carregar detalhes.</p>`;
+      document.getElementById("detalhes-body").innerHTML = `<p style="color: var(--danger);">Erro ao carregar detalhes: ${err.message}</p>`;
     }
   }
 
-  
+
   let chatInvestigadorAtual = { id: null, codigo: null };
 
   async function abrirModalChatInvestigador(denunciaId, codigo, token) {
@@ -2808,7 +2836,7 @@
       const data = await res.json();
 
       messagesDiv.innerHTML = "";
-      
+
       if (data.mensagens && data.mensagens.length > 0) {
         data.mensagens.forEach(msg => {
           const div = document.createElement("div");
@@ -2838,7 +2866,7 @@
     const agora = new Date();
     const hora = String(agora.getHours()).padStart(2, "0") + ":" + String(agora.getMinutes()).padStart(2, "0");
 
-    
+
     const messagesDiv = document.getElementById("chat-inv-messages");
     const div = document.createElement("div");
     div.className = "chat-msg-inv investigador";
@@ -2847,14 +2875,14 @@
     messagesDiv.scrollTop = messagesDiv.scrollHeight;
     input.value = "";
 
-    
+
     try {
       await fetch("/api/chat-mensagem", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           denuncia_id: chatInvestigadorAtual.id,
-          autor: "in", 
+          autor: "in",
           texto: texto,
           hora: hora
         })
@@ -2863,5 +2891,5 @@
       console.error("Erro ao enviar mensagem:", err);
       showToast("Erro ao enviar mensagem");
     }
-  } 
+  }
 })();
