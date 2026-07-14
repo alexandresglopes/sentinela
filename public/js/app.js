@@ -649,21 +649,85 @@
   }
 
   
-  async function enviarMensagemInvestigador() {
+  async function abrirModalChatInvestigador(denunciaId, codigo, token) {
+    chatInvestigadorAtual = { id: Number(denunciaId), codigo: codigo };
+
+    const modalHTML = `
+    <div class="modal-overlay" id="modal-chat-inv-overlay" style="display:flex; z-index: 2000;">
+      <div class="modal-content" style="max-width: 600px; height: 500px; display: flex; flex-direction: column;">
+        <div class="modal-header">
+          <h3 class="modal-title">Chat com Denunciante <span style="font-size:0.8rem; color:var(--primary); margin-left:8px;">${codigo}</span></h3>
+          <button class="modal-close" id="modal-chat-close-btn" type="button"></button>
+        </div>
+        <div class="chat-investigador-container" style="flex: 1; display: flex; flex-direction: column;">
+          <div class="chat-investigador-messages" id="chat-inv-messages">
+            <p style="text-align: center; color: var(--text-muted); margin-top: 20px;">Carregando mensagens...</p>
+          </div>
+          <div class="chat-investigador-input" style="display: flex; gap: 8px; padding: 12px; border-top: 1px solid var(--border);">
+            <input type="text" id="chat-inv-input" placeholder="Escreva sua resposta..." style="flex: 1; padding: 10px 16px; border: 1px solid var(--border); border-radius: 20px; font-size: 0.9rem; outline: none;">
+            <button id="modal-chat-send-btn" style="padding: 10px 20px; background: var(--primary); color: #fff; border: none; border-radius: 20px; cursor: pointer; font-weight: 600;">Enviar</button>
+          </div>
+        </div>
+      </div>
+    </div>`;
+
+    document.body.insertAdjacentHTML("beforeend", modalHTML);
+
+    
+    setTimeout(() => {
+      const closeBtn = document.getElementById("modal-chat-close-btn");
+      const sendBtn = document.getElementById("modal-chat-send-btn");
+      const input = document.getElementById("chat-inv-input");
+
+      if (closeBtn) {
+        closeBtn.addEventListener("click", () => {
+          const modal = document.getElementById("modal-chat-inv-overlay");
+          if (modal) modal.remove();
+        });
+      }
+
+      if (sendBtn) {
+        sendBtn.addEventListener("click", () => {
+          window.enviarMensagemChatInvestigador();
+        });
+      }
+
+      if (input) {
+        input.addEventListener("keypress", (e) => {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            window.enviarMensagemChatInvestigador();
+          }
+        });
+        input.focus();
+      }
+    }, 100);
+
+    await carregarMensagensChatInvestigador();
+  }
+
+  
+  window.enviarMensagemChatInvestigador = async function () {
     const input = document.getElementById("chat-inv-input");
+    if (!input) return;
+
     const texto = input.value.trim();
     if (!texto || !chatInvestigadorAtual.id) return;
 
     const agora = new Date();
     const hora = String(agora.getHours()).padStart(2, "0") + ":" + String(agora.getMinutes()).padStart(2, "0");
 
-    
     const messagesDiv = document.getElementById("chat-inv-messages");
+    if (!messagesDiv) return;
+
+    
     const div = document.createElement("div");
     div.className = "chat-msg-inv investigador";
-    div.innerHTML = `${texto}<span class="hora-msg">${hora}</span>`;
+    div.style.cssText = "align-self: flex-end; background: var(--primary); color: #fff; padding: 10px 14px; border-radius: 12px; max-width: 80%; margin-bottom: 12px; border-bottom-right-radius: 4px;";
+    div.innerHTML = `${texto}<span style="font-size: 0.7rem; opacity: 0.7; margin-top: 4px; display: block; text-align: right;">${hora}</span>`;
     messagesDiv.appendChild(div);
     messagesDiv.scrollTop = messagesDiv.scrollHeight;
+
     input.value = "";
 
     
@@ -679,16 +743,15 @@
         })
       });
 
-      if (!response.ok) {
-        throw new Error("Falha no servidor");
-      }
+      if (!response.ok) throw new Error("Falha no servidor");
+
     } catch (err) {
       console.error("Erro ao enviar mensagem:", err);
       showToast("Erro ao enviar mensagem. Tente novamente.");
-      // Remove a mensagem da tela se falhar
-      messagesDiv.removeChild(div);
+      
+      if (div.parentNode) div.parentNode.removeChild(div);
     }
-  }
+  };
 
   async function carregarMensagensChatInvestigador() {
     const messagesDiv = document.getElementById("chat-inv-messages");
