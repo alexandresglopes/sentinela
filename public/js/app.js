@@ -405,14 +405,31 @@
   }
 
   function initDashboard() {
+    console.log("Iniciando Dashboard...");
+
     fetch("/api/dashboard")
-      .then(res => res.json())
-      .then(data => renderCharts(data))
-      .catch(err => console.error("Erro no dashboard:", err));
+      .then(res => {
+        console.log("Resposta do dashboard:", res.status);
+        return res.json();
+      })
+      .then(data => {
+        console.log("Dados do dashboard recebidos:", data);
+        renderCharts(data);
+      })
+      .catch(err => {
+        console.error("Erro no dashboard:", err);
+        const container = document.getElementById("tendencias-grid");
+        if (container) {
+          container.innerHTML = `<p style="color: var(--danger);">Erro ao carregar dashboard: ${err.message}</p>`;
+        }
+      });
 
     fetch("/api/tendencias")
       .then(res => res.json())
-      .then(data => renderTendencias(data))
+      .then(data => {
+        console.log("Dados de tendências:", data);
+        renderTendencias(data);
+      })
       .catch(err => console.error("Erro nas tendências:", err));
   }
 
@@ -553,14 +570,28 @@
     const cards = document.getElementById("previsao-cards");
     const vazia = document.getElementById("previsao-vazia");
 
-    if (!loading) return;
+    if (!loading) {
+      console.error("Elemento previsao-loading não encontrado");
+      return;
+    }
 
+    console.log("Iniciando previsões...");
     const token = localStorage.getItem("sentinela_token");
 
+    if (!token) {
+      console.warn("Usuário não autenticado. Redirecionando para login...");
+      loading.innerHTML = `<p style="color: var(--text-muted);">Faça login para ver as previsões.</p>`;
+      setTimeout(() => {
+        window.location.hash = "#/login";
+      }, 2000);
+      return;
+    }
+
     fetch("/api/painel/previsao", {
-      headers: { "Authorization": "Bearer " + (token || "") }
+      headers: { "Authorization": "Bearer " + token }
     })
       .then(res => {
+        console.log("Resposta da previsão:", res.status);
         if (res.status === 401) {
           window.location.hash = "#/login";
           return null;
@@ -570,91 +601,97 @@
       .then(data => {
         if (!data) return;
 
+        console.log("Dados de previsão recebidos:", data);
         loading.style.display = "none";
 
         if (!data.previsoes || data.previsoes.length === 0) {
-          vazia.style.display = "block";
+          console.log("Nenhuma previsão disponível");
+          if (vazia) vazia.style.display = "block";
           return;
         }
 
-        cards.style.display = "grid";
-        cards.style.gridTemplateColumns = "repeat(auto-fit, minmax(320px, 1fr))";
-        cards.style.gap = "20px";
+        if (cards) {
+          cards.style.display = "grid";
+          cards.style.gridTemplateColumns = "repeat(auto-fit, minmax(320px, 1fr))";
+          cards.style.gap = "20px";
 
-        const diasSemana = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];
-        const faixasHorarias = ["00h-06h", "06h-12h", "12h-18h", "18h-24h"];
+          const diasSemana = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];
+          const faixasHorarias = ["00h-06h", "06h-12h", "12h-18h", "18h-24h"];
 
-        const html = data.previsoes.map(p => {
-          const isCritico = p.risco === "critico";
-          const isElevado = p.risco === "elevado";
-          const isModerado = p.risco === "moderado";
+          const html = data.previsoes.map(p => {
+            const isCritico = p.risco === "critico";
+            const isElevado = p.risco === "elevado";
+            const isModerado = p.risco === "moderado";
 
-          let badgeCor = "var(--success)";
-          let badgeTexto = "Zona Tranquila";
-          let icone = "✓";
-          let classeCard = "";
+            let badgeCor = "var(--success)";
+            let badgeTexto = "Zona Tranquila";
+            let icone = "✓";
+            let classeCard = "";
 
-          if (isCritico) {
-            classeCard = " previsao-card--critico";
-            badgeCor = "var(--danger)";
-            badgeTexto = "Risco Crítico";
-            icone = "🔴";
-          } else if (isElevado) {
-            classeCard = " previsao-card--elevado";
-            badgeCor = "var(--accent)";
-            badgeTexto = "Risco Elevado";
-            icone = "🟠";
-          } else if (isModerado) {
-            classeCard = " previsao-card--moderado";
-            badgeCor = "#f4a63b";
-            badgeTexto = "Risco Moderado";
-            icone = "🟡";
-          }
+            if (isCritico) {
+              classeCard = " previsao-card--critico";
+              badgeCor = "var(--danger)";
+              badgeTexto = "Risco Crítico";
+              icone = "🔴";
+            } else if (isElevado) {
+              classeCard = " previsao-card--elevado";
+              badgeCor = "var(--accent)";
+              badgeTexto = "Risco Elevado";
+              icone = "🟠";
+            } else if (isModerado) {
+              classeCard = " previsao-card--moderado";
+              badgeCor = "#f4a63b";
+              badgeTexto = "Risco Moderado";
+              icone = "🟡";
+            }
 
-          const diaNome = diasSemana[p.dia_semana] || "Desconhecido";
-          const faixaNome = faixasHorarias[p.faixa_horaria] || "Desconhecida";
-          const isHoje = p.dia_semana === data.dia_atual;
+            const diaNome = diasSemana[p.dia_semana] || "Desconhecido";
+            const faixaNome = faixasHorarias[p.faixa_horaria] || "Desconhecida";
+            const isHoje = p.dia_semana === data.dia_atual;
 
-          return `
-            <div class="previsao-card${classeCard}">
-              <div class="previsao-header">
-                <span class="previsao-badge" style="background: ${badgeCor}; color: white;">
-                  ${icone} ${badgeTexto}
-                </span>
-                ${isHoje ? '<span class="previsao-hoje">HOJE</span>' : ''}
+            return `
+          <div class="previsao-card${classeCard}">
+            <div class="previsao-header">
+              <span class="previsao-badge" style="background: ${badgeCor}; color: white;">
+                ${icone} ${badgeTexto}
+              </span>
+              ${isHoje ? '<span class="previsao-hoje">HOJE</span>' : ''}
+            </div>
+            <h3 class="previsao-titulo">${p.tipo_nome}</h3>
+            <div class="previsao-info">
+              <div class="previsao-info-item">
+                <span class="previsao-info-label">📅 Quando</span>
+                <span class="previsao-info-value">${diaNome} · ${faixaNome}</span>
               </div>
-              <h3 class="previsao-titulo">${p.tipo_nome}</h3>
-              <div class="previsao-info">
-                <div class="previsao-info-item">
-                  <span class="previsao-info-label">📅 Quando</span>
-                  <span class="previsao-info-value">${diaNome} · ${faixaNome}</span>
-                </div>
-                <div class="previsao-info-item">
-                  <span class="previsao-info-label">📍 Onde</span>
-                  <span class="previsao-info-value">${p.bairro}</span>
-                </div>
-                <div class="previsao-info-item">
-                  <span class="previsao-info-label"> Previsão</span>
-                  <span class="previsao-info-value">${p.media_ocorrencias} ocorrências</span>
-                </div>
+              <div class="previsao-info-item">
+                <span class="previsao-info-label">📍 Onde</span>
+                <span class="previsao-info-value">${p.bairro}</span>
               </div>
-              <div class="previsao-footer">
-                <span class="previsao-variacao" style="color: ${badgeCor};">
-                  ${p.percentual_acima > 0 ? '+' : ''}${p.percentual_acima}% acima da média
-                </span>
-                <span class="previsao-amostras">
-                  Baseado em ${p.amostras} amostras
-                </span>
+              <div class="previsao-info-item">
+                <span class="previsao-info-label"> Previsão</span>
+                <span class="previsao-info-value">${p.media_ocorrencias} ocorrências</span>
               </div>
             </div>
-          `;
-        }).join("");
+            <div class="previsao-footer">
+              <span class="previsao-variacao" style="color: ${badgeCor};">
+                ${p.percentual_acima > 0 ? '+' : ''}${p.percentual_acima}% acima da média
+              </span>
+              <span class="previsao-amostras">
+                Baseado em ${p.amostras} amostras
+              </span>
+            </div>
+          </div>
+        `;
+          }).join("");
 
-        cards.innerHTML = html;
+          cards.innerHTML = html;
+        }
       })
       .catch(err => {
         console.error("Erro ao carregar previsões:", err);
-        loading.innerHTML = `<p style="color: var(--danger);">Erro ao carregar previsões. Tente novamente.</p>`;
+        if (loading) {
+          loading.innerHTML = `<p style="color: var(--danger);">Erro ao carregar previsões: ${err.message}</p>`;
+        }
       });
   }
 
@@ -1290,20 +1327,31 @@
     window.scrollTo({ top: 0, behavior: "instant" in window ? "instant" : "auto" });
     window.__sentinelaMap = null;
 
-    if (path === "mapa") {
-      setTimeout(() => { initMapa(); }, 100);
-    }
-    if (path === "denuncias") initDenuncia();
-    if (path === "denuncia-enviada") initDenunciaEnviada();
-    if (path === "acompanhar") initAcompanhar(params.get("codigo"));
-    if (path === "login") initLogin();
-    if (path === "painel") initPainel();
-    if (path === "dashboard") {
-      setTimeout(() => { initDashboard(); }, 100);
-    }
-    if (path === "previsao") {
-      setTimeout(() => { initPrevisao(); }, 100);
-    }
+    // Aguarda o próximo tick do event loop para garantir que o DOM foi renderizado
+    requestAnimationFrame(() => {
+      if (path === "mapa") {
+        initMapa();
+      }
+
+      if (path === "denuncias") initDenuncia();
+      if (path === "denuncia-enviada") initDenunciaEnviada();
+      if (path === "acompanhar") initAcompanhar(params.get("codigo"));
+      if (path === "login") initLogin();
+      if (path === "painel") initPainel();
+
+      if (path === "dashboard") {
+        // Aguarda um pouco mais para garantir que o Chart.js está pronto
+        setTimeout(() => {
+          initDashboard();
+        }, 300);
+      }
+
+      if (path === "previsao") {
+        setTimeout(() => {
+          initPrevisao();
+        }, 300);
+      }
+    });
   }
 
   function initEmergencia() {
