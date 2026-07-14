@@ -48,9 +48,9 @@
       };
 
       window.gm_authFailure = function () {
-        console.error("Falha na autenticação do Google Maps - InvalidKey");
+        console.error("Falha na autenticação do Google Maps");
         googleMapsCarregando = false;
-        showToast("Erro: Chave do Google Maps inválida. Verifique o console.");
+        showToast("Erro: Chave do Google Maps inválida.");
       };
 
       const script = document.createElement("script");
@@ -102,6 +102,7 @@
       clock: `<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>`,
       layers: `<path d="m12 2 9 5-9 5-9-5 9-5z"/><path d="m3 12 9 5 9-5M3 17l9 5 9-5"/>`,
       user: `<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>`,
+      phone: `<path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>`,
     };
     return `<svg ${s} aria-hidden="true">${paths[name] || ""}</svg>`;
   }
@@ -405,31 +406,14 @@
   }
 
   function initDashboard() {
-    console.log("Iniciando Dashboard...");
-
     fetch("/api/dashboard")
-      .then(res => {
-        console.log("Resposta do dashboard:", res.status);
-        return res.json();
-      })
-      .then(data => {
-        console.log("Dados do dashboard recebidos:", data);
-        renderCharts(data);
-      })
-      .catch(err => {
-        console.error("Erro no dashboard:", err);
-        const container = document.getElementById("tendencias-grid");
-        if (container) {
-          container.innerHTML = `<p style="color: var(--danger);">Erro ao carregar dashboard: ${err.message}</p>`;
-        }
-      });
+      .then(res => res.json())
+      .then(data => renderCharts(data))
+      .catch(err => console.error("Erro no dashboard:", err));
 
     fetch("/api/tendencias")
       .then(res => res.json())
-      .then(data => {
-        console.log("Dados de tendências:", data);
-        renderTendencias(data);
-      })
+      .then(data => renderTendencias(data))
       .catch(err => console.error("Erro nas tendências:", err));
   }
 
@@ -570,20 +554,13 @@
     const cards = document.getElementById("previsao-cards");
     const vazia = document.getElementById("previsao-vazia");
 
-    if (!loading) {
-      console.error("Elemento previsao-loading não encontrado");
-      return;
-    }
+    if (!loading) return;
 
-    console.log("Iniciando previsões...");
     const token = localStorage.getItem("sentinela_token");
 
     if (!token) {
-      console.warn("Usuário não autenticado. Redirecionando para login...");
       loading.innerHTML = `<p style="color: var(--text-muted);">Faça login para ver as previsões.</p>`;
-      setTimeout(() => {
-        window.location.hash = "#/login";
-      }, 2000);
+      setTimeout(() => { window.location.hash = "#/login"; }, 2000);
       return;
     }
 
@@ -591,7 +568,6 @@
       headers: { "Authorization": "Bearer " + token }
     })
       .then(res => {
-        console.log("Resposta da previsão:", res.status);
         if (res.status === 401) {
           window.location.hash = "#/login";
           return null;
@@ -601,11 +577,9 @@
       .then(data => {
         if (!data) return;
 
-        console.log("Dados de previsão recebidos:", data);
         loading.style.display = "none";
 
         if (!data.previsoes || data.previsoes.length === 0) {
-          console.log("Nenhuma previsão disponível");
           if (vazia) vazia.style.display = "block";
           return;
         }
@@ -650,38 +624,38 @@
             const isHoje = p.dia_semana === data.dia_atual;
 
             return `
-          <div class="previsao-card${classeCard}">
-            <div class="previsao-header">
-              <span class="previsao-badge" style="background: ${badgeCor}; color: white;">
-                ${icone} ${badgeTexto}
-              </span>
-              ${isHoje ? '<span class="previsao-hoje">HOJE</span>' : ''}
-            </div>
-            <h3 class="previsao-titulo">${p.tipo_nome}</h3>
-            <div class="previsao-info">
-              <div class="previsao-info-item">
-                <span class="previsao-info-label">📅 Quando</span>
-                <span class="previsao-info-value">${diaNome} · ${faixaNome}</span>
+              <div class="previsao-card${classeCard}">
+                <div class="previsao-header">
+                  <span class="previsao-badge" style="background: ${badgeCor}; color: white;">
+                    ${icone} ${badgeTexto}
+                  </span>
+                  ${isHoje ? '<span class="previsao-hoje">HOJE</span>' : ''}
+                </div>
+                <h3 class="previsao-titulo">${p.tipo_nome}</h3>
+                <div class="previsao-info">
+                  <div class="previsao-info-item">
+                    <span class="previsao-info-label">📅 Quando</span>
+                    <span class="previsao-info-value">${diaNome} · ${faixaNome}</span>
+                  </div>
+                  <div class="previsao-info-item">
+                    <span class="previsao-info-label">📍 Onde</span>
+                    <span class="previsao-info-value">${p.bairro}</span>
+                  </div>
+                  <div class="previsao-info-item">
+                    <span class="previsao-info-label"> Previsão</span>
+                    <span class="previsao-info-value">${p.media_ocorrencias} ocorrências</span>
+                  </div>
+                </div>
+                <div class="previsao-footer">
+                  <span class="previsao-variacao" style="color: ${badgeCor};">
+                    ${p.percentual_acima > 0 ? '+' : ''}${p.percentual_acima}% acima da média
+                  </span>
+                  <span class="previsao-amostras">
+                    Baseado em ${p.amostras} amostras
+                  </span>
+                </div>
               </div>
-              <div class="previsao-info-item">
-                <span class="previsao-info-label">📍 Onde</span>
-                <span class="previsao-info-value">${p.bairro}</span>
-              </div>
-              <div class="previsao-info-item">
-                <span class="previsao-info-label"> Previsão</span>
-                <span class="previsao-info-value">${p.media_ocorrencias} ocorrências</span>
-              </div>
-            </div>
-            <div class="previsao-footer">
-              <span class="previsao-variacao" style="color: ${badgeCor};">
-                ${p.percentual_acima > 0 ? '+' : ''}${p.percentual_acima}% acima da média
-              </span>
-              <span class="previsao-amostras">
-                Baseado em ${p.amostras} amostras
-              </span>
-            </div>
-          </div>
-        `;
+            `;
           }).join("");
 
           cards.innerHTML = html;
@@ -712,32 +686,16 @@
   }
 
   async function renderMarkers(map) {
-    console.log("📍 Renderizando marcadores...");
     const DATA = window.SENTINELA_DATA;
-    if (!DATA) {
-      console.error("❌ SENTINELA_DATA não encontrado");
-      return;
-    }
+    if (!DATA) return;
 
-    
     mapMarkers.forEach((m) => m.setMap(null));
     mapMarkers = [];
 
     const list = filteredOccurrences();
-    console.log(`📊 Ocorrências filtradas: ${list.length} de ${DATA.ocorrencias.length} totais`);
 
-    if (list.length === 0) {
-      console.warn("️ Nenhuma ocorrência para mostrar (filtros podem estar vazios)");
-    }
-
-    list.forEach((o, index) => {
-      console.log(`Marcador ${index + 1}:`, o);
-
-      
-      if (!o.lat || !o.lng) {
-        console.warn(`❌ Ocorrência ${o.id} sem coordenadas válidas:`, o);
-        return;
-      }
+    list.forEach((o) => {
+      if (!o.lat || !o.lng) return;
 
       const cor = DATA.severidades[o.severidade]?.cor || "#17b8a6";
 
@@ -757,10 +715,10 @@
 
       const infoWindow = new google.maps.InfoWindow({
         content: `
-        <div style="font-weight:bold;margin-bottom:4px;">${o.titulo || "Ocorrência"}</div>
-        <div style="font-size:0.9rem;color:#666;">${o.bairro || "Local não informado"} · ${o.tempo || ""}</div>
-        <p style="margin:8px 0;font-size:0.95rem;">${o.desc || o.descricao || "Sem descrição"}</p>
-      `
+          <div style="font-weight:bold;margin-bottom:4px;">${o.titulo || "Ocorrência"}</div>
+          <div style="font-size:0.9rem;color:#666;">${o.bairro || "Local não informado"} · ${o.tempo || ""}</div>
+          <p style="margin:8px 0;font-size:0.95rem;">${o.desc || o.descricao || "Sem descrição"}</p>
+        `
       });
 
       marker.addListener("click", () => {
@@ -771,52 +729,23 @@
       mapMarkers.push(marker);
     });
 
-    console.log(`✅ ${mapMarkers.length} marcadores renderizados`);
-
     if ($("#stat-total")) $("#stat-total").textContent = list.length;
     const alto = list.filter((o) => o.severidade === "alto").length;
     if ($("#stat-alto")) $("#stat-alto").textContent = alto;
   }
 
   function initMapa() {
-    console.log("️ Iniciando mapa...");
     const DATA = window.SENTINELA_DATA;
-
-    if (!DATA) {
-      console.error(" SENTINELA_DATA não encontrado!");
-      setTimeout(initMapa, 500);
-      return;
-    }
-
-    console.log("✅ Dados carregados:", DATA);
-
-    if (!googleMapsReady) {
-      console.log(" Google Maps ainda não está pronto...");
-      setTimeout(initMapa, 500);
-      return;
-    }
-
+    if (!DATA || !googleMapsReady) { setTimeout(initMapa, 500); return; }
     const mapElement = document.getElementById("map");
-    if (!mapElement) {
-      console.error("❌ Elemento #map não encontrado!");
-      setTimeout(initMapa, 500);
-      return;
-    }
+    if (!mapElement) { setTimeout(initMapa, 500); return; }
+    if (window.__sentinelaMap) return;
 
-    if (window.__sentinelaMap) {
-      console.log("ℹ️ Mapa já inicializado");
-      return;
-    }
-
-    console.log("📍 Criando mapa em:", DATA.center);
     const map = new google.maps.Map(mapElement, {
       center: { lat: DATA.center[0], lng: DATA.center[1] },
       zoom: DATA.zoom
     });
-
     window.__sentinelaMap = map;
-    console.log("✅ Mapa criado com sucesso!");
-
     renderMarkers(map);
 
     $$("#filtro-severidade .chip").forEach((chip) => {
@@ -900,10 +829,7 @@
 
   async function carregarTimelinePublica(codigo) {
     const container = document.getElementById("timeline-publica");
-    if (!container) {
-      console.error("Container da timeline não encontrado");
-      return;
-    }
+    if (!container) return;
 
     container.innerHTML = `<p style="text-align: center; color: var(--text-muted); padding: 20px;">Carregando histórico...</p>`;
 
@@ -930,7 +856,7 @@
             <div class="timeline-content">
               <div class="timeline-evento">${e.evento}</div>
               <div class="timeline-meta">
-                <span>🕐 ${hora} · ${dataFormatada}</span>
+                <span> ${hora} · ${dataFormatada}</span>
                 <span>👤 ${e.autor || 'Sistema'}</span>
               </div>
             </div>
@@ -1366,6 +1292,103 @@
     }
   }
 
+  function abrirModalEmergencia() {
+    if (document.getElementById("emergencia-modal")) return;
+
+    const numerosEmergencia = [
+      { numero: "190", nome: "Polícia Militar", desc: "Emergências policiais, crimes em andamento" },
+      { numero: "192", nome: "SAMU", desc: "Emergências médicas e resgates" },
+      { numero: "193", nome: "Bombeiros", desc: "Incêndios, resgates e acidentes" },
+      { numero: "191", nome: "Polícia Rodoviária Federal", desc: "Emergências em rodovias federais" },
+      { numero: "197", nome: "Polícia Civil", desc: "Denúncias e investigações" },
+      { numero: "180", nome: "Central da Mulher", desc: "Violência contra a mulher" },
+      { numero: "100", nome: "Disque Direitos Humanos", desc: "Denúncias de violações de direitos" },
+      { numero: "198", nome: "PRF - Denúncias", desc: "Denúncias sobre rodovias federais" }
+    ];
+
+    const listaHTML = numerosEmergencia.map(n => `
+      <a href="tel:${n.numero}" class="emergencia-item">
+        <div class="emergencia-item-numero">${n.numero}</div>
+        <div class="emergencia-item-info">
+          <div class="emergencia-item-nome">${n.nome}</div>
+          <div class="emergencia-item-desc">${n.desc}</div>
+        </div>
+        <svg class="emergencia-item-icone" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="m9 18 6-6-6-6"/>
+        </svg>
+      </a>
+    `).join("");
+
+    const modalHTML = `
+      <div class="emergencia-modal" id="emergencia-modal">
+        <div class="emergencia-modal-content">
+          <div class="emergencia-modal-header">
+            <h3 class="emergencia-modal-title">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>
+              </svg>
+              Números de Emergência
+            </h3>
+            <button class="emergencia-modal-close" id="emergencia-modal-close" type="button" aria-label="Fechar">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                <path d="M18 6 6 18M6 6l12 12"/>
+              </svg>
+            </button>
+          </div>
+          <div class="emergencia-modal-body">
+            <div class="emergencia-aviso">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"/>
+                <line x1="12" y1="8" x2="12" y2="12"/>
+                <line x1="12" y1="16" x2="12.01" y2="16"/>
+              </svg>
+              <div>
+                <strong>Ligue apenas em casos de emergência.</strong><br>
+                Chamadas falsas são crime e podem resultar em multa ou prisão.
+              </div>
+            </div>
+            <div class="emergencia-lista">
+              ${listaHTML}
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+
+    document.body.insertAdjacentHTML("beforeend", modalHTML);
+
+    const modal = document.getElementById("emergencia-modal");
+    const btnClose = document.getElementById("emergencia-modal-close");
+
+    btnClose.addEventListener("click", fecharModalEmergencia);
+
+    modal.addEventListener("click", (e) => {
+      if (e.target.id === "emergencia-modal") {
+        fecharModalEmergencia();
+      }
+    });
+
+    document.addEventListener("keydown", handleEscEmergencia);
+  }
+
+  function handleEscEmergencia(e) {
+    if (e.key === "Escape") {
+      fecharModalEmergencia();
+      document.removeEventListener("keydown", handleEscEmergencia);
+    }
+  }
+
+  function fecharModalEmergencia() {
+    const modal = document.getElementById("emergencia-modal");
+    if (modal) {
+      modal.classList.add("modal-closing");
+      setTimeout(() => {
+        if (modal.parentNode) modal.remove();
+      }, 200);
+    }
+    document.removeEventListener("keydown", handleEscEmergencia);
+  }
+
   function parseHash() {
     const raw = window.location.hash.replace(/^#\//, "") || "inicio";
     const [path, query] = raw.split("?");
@@ -1402,7 +1425,6 @@
     window.scrollTo({ top: 0, behavior: "instant" in window ? "instant" : "auto" });
     window.__sentinelaMap = null;
 
-    // Aguarda o próximo tick do event loop para garantir que o DOM foi renderizado
     requestAnimationFrame(() => {
       if (path === "mapa") {
         initMapa();
@@ -1415,16 +1437,11 @@
       if (path === "painel") initPainel();
 
       if (path === "dashboard") {
-        // Aguarda um pouco mais para garantir que o Chart.js está pronto
-        setTimeout(() => {
-          initDashboard();
-        }, 300);
+        setTimeout(() => { initDashboard(); }, 300);
       }
 
       if (path === "previsao") {
-        setTimeout(() => {
-          initPrevisao();
-        }, 300);
+        setTimeout(() => { initPrevisao(); }, 300);
       }
     });
   }
@@ -1433,103 +1450,8 @@
     if (document.getElementById("btn-emergencia-flutuante")) return;
     const btnHTML = `<button class="btn-emergencia-flutuante" id="btn-emergencia-flutuante" type="button" aria-label="Emergência" title="Números de emergência" style="position:fixed;bottom:24px;right:24px;width:56px;height:56px;border-radius:50%;background:#ef5a63;color:#fff;border:none;box-shadow:0 4px 12px rgba(239,90,99,0.4);cursor:pointer;z-index:999;display:flex;align-items:center;justify-content:center;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" width="24" height="24"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg></button>`;
     document.body.insertAdjacentHTML("beforeend", btnHTML);
-  }
 
-  function abrirModalEmergencia() {
-    if (document.getElementById("emergencia-modal")) return;
-
-    const numerosEmergencia = [
-      { numero: "190", nome: "Polícia Militar", desc: "Emergências policiais, crimes em andamento" },
-      { numero: "192", nome: "SAMU", desc: "Emergências médicas e resgates" },
-      { numero: "193", nome: "Bombeiros", desc: "Incêndios, resgates e acidentes" },
-      { numero: "191", nome: "Polícia Rodoviária Federal", desc: "Emergências em rodovias federais" },
-      { numero: "197", nome: "Polícia Civil", desc: "Denúncias e investigações" },
-      { numero: "180", nome: "Central da Mulher", desc: "Violência contra a mulher" },
-      { numero: "100", nome: "Disque Direitos Humanos", desc: "Denúncias de violações de direitos" },
-      { numero: "198", nome: "PRF - Denúncias", desc: "Denúncias sobre rodovias federais" }
-    ];
-
-    const listaHTML = numerosEmergencia.map(n => `
-    <a href="tel:${n.numero}" class="emergencia-item">
-      <div class="emergencia-item-numero">${n.numero}</div>
-      <div class="emergencia-item-info">
-        <div class="emergencia-item-nome">${n.nome}</div>
-        <div class="emergencia-item-desc">${n.desc}</div>
-      </div>
-      <svg class="emergencia-item-icone" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="m9 18 6-6-6-6"/>
-      </svg>
-    </a>
-  `).join("");
-
-    const modalHTML = `
-    <div class="emergencia-modal" id="emergencia-modal">
-      <div class="emergencia-modal-content">
-        <div class="emergencia-modal-header">
-          <h3 class="emergencia-modal-title">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>
-            </svg>
-            Números de Emergência
-          </h3>
-          <button class="emergencia-modal-close" id="emergencia-modal-close" type="button" aria-label="Fechar">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-              <path d="M18 6 6 18M6 6l12 12"/>
-            </svg>
-          </button>
-        </div>
-        <div class="emergencia-modal-body">
-          <div class="emergencia-aviso">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <circle cx="12" cy="12" r="10"/>
-              <line x1="12" y1="8" x2="12" y2="12"/>
-              <line x1="12" y1="16" x2="12.01" y2="16"/>
-            </svg>
-            <div>
-              <strong>Ligue apenas em casos de emergência.</strong><br>
-              Chamadas falsas são crime e podem resultar em multa ou prisão.
-            </div>
-          </div>
-          <div class="emergencia-lista">
-            ${listaHTML}
-          </div>
-        </div>
-      </div>
-    </div>
-  `;
-
-    document.body.insertAdjacentHTML("beforeend", modalHTML);
-
-    const modal = document.getElementById("emergencia-modal");
-    const btnClose = document.getElementById("emergencia-modal-close");
-
-    btnClose.addEventListener("click", fecharModalEmergencia);
-
-    modal.addEventListener("click", (e) => {
-      if (e.target.id === "emergencia-modal") {
-        fecharModalEmergencia();
-      }
-    });
-
-    document.addEventListener("keydown", handleEscEmergencia);
-  }
-
-  function handleEscEmergencia(e) {
-    if (e.key === "Escape") {
-      fecharModalEmergencia();
-      document.removeEventListener("keydown", handleEscEmergencia);
-    }
-  }
-
-  function fecharModalEmergencia() {
-    const modal = document.getElementById("emergencia-modal");
-    if (modal) {
-      modal.classList.add("modal-closing");
-      setTimeout(() => {
-        if (modal.parentNode) modal.remove();
-      }, 200);
-    }
-    document.removeEventListener("keydown", handleEscEmergencia);
+    document.getElementById("btn-emergencia-flutuante").addEventListener("click", abrirModalEmergencia);
   }
 
   function init() {
