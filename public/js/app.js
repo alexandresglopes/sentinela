@@ -188,17 +188,142 @@
     `;
   }
 
-  // ... (Funções de página pageMapa, pageDenuncias, pageDenunciaEnviada, pageAcompanhar, pageLogin, pagePainel, pageDashboard, pagePrevisao mantidas iguais ao seu código original para não quebrar o layout) ...
-  // Para garantir que o arquivo funcione, estou incluindo a estrutura completa abaixo, focando nas correções de lógica.
+
+  let chartsInstances = {};
+  let mapMarkers = [];
+  let heatmapLayer = null;
+  let heatmapAtivo = false;
+  let estatisticasConfirmacoes = {};
+  let tokenUsuario = null;
+  const activeFilters = { sev: new Set(["alto", "medio", "baixo"]), tipo: new Set() };
+
 
   function pageMapa() {
     const DATA = window.SENTINELA_DATA;
     if (!DATA) return "<p>Carregando dados...</p>";
     const tiposChips = DATA.tipos.map((t) => `<button class="chip is-active" data-tipo="${t.id}" type="button">${t.nome}</button>`).join("");
+
     return `
-      <section class="page-head"><div class="container page-head__row"><div><h1 class="page-title">Mapa de ocorrências</h1><p class="page-sub">Visualize ocorrências em tempo real, filtre por tipo e severidade.</p></div><button class="btn btn--primary" id="btn-registrar" type="button">${icon("pin", 18)} Registrar ocorrência</button></div></section>
-      <section class="container"><div class="map-layout"><aside class="map-sidebar"><div class="stat-cards"><div class="stat"><div class="stat__value" id="stat-total">0</div><div class="stat__label">Ocorrências</div></div><div class="stat"><div class="stat__value is-danger" id="stat-alto">0</div><div class="stat__label">Risco alto</div></div></div><div class="card" style="padding:18px"><div class="filter-group" style="margin-bottom:16px"><span class="filter-group__label">Severidade</span><div class="chip-row" id="filtro-severidade"><button class="chip is-active" data-sev="alto" type="button">Alto</button><button class="chip is-active" data-sev="medio" type="button">Médio</button><button class="chip is-active" data-sev="baixo" type="button">Baixo</button></div></div><div class="filter-group"><span class="filter-group__label">Tipo de ocorrência</span><div class="chip-row" id="filtro-tipo">${tiposChips}</div></div></div><div class="card" style="padding:18px"><span class="filter-group__label" style="display:block;margin-bottom:12px">Ocorrências recentes</span><div class="occ-list" id="occ-list"></div></div></aside><div class="map-wrap"><div id="map" role="application" aria-label="Mapa de ocorrências"></div><div class="map-controls"><button class="map-control-btn" id="btn-heatmap" type="button" title="Ativar mapa de calor"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg> Mapa de calor</button></div><div class="map-legend"><div class="map-legend__row"><span class="legend-dot" style="background:${DATA.severidades.alto.cor}"></span> Risco alto</div><div class="map-legend__row"><span class="legend-dot" style="background:${DATA.severidades.medio.cor}"></span> Risco médio</div><div class="map-legend__row"><span class="legend-dot" style="background:${DATA.severidades.baixo.cor}"></span> Risco baixo</div></div></div></div></section>
-    `;
+    <section class="page-head">
+      <div class="container page-head__row">
+        <div>
+          <h1 class="page-title">Mapa de ocorrências</h1>
+          <p class="page-sub">Visualize ocorrências em tempo real, filtre por tipo e severidade.</p>
+        </div>
+        <button class="btn btn--primary" id="btn-registrar" type="button">${icon("pin", 18)} Registrar ocorrência</button>
+      </div>
+    </section>
+    <section class="container">
+      <div class="map-layout">
+        <aside class="map-sidebar">
+          <div class="stat-cards">
+            <div class="stat"><div class="stat__value" id="stat-total">0</div><div class="stat__label">Ocorrências</div></div>
+            <div class="stat"><div class="stat__value is-danger" id="stat-alto">0</div><div class="stat__label">Risco alto</div></div>
+          </div>
+          <div class="card" style="padding:18px">
+            <div class="filter-group" style="margin-bottom:16px">
+              <span class="filter-group__label">Severidade</span>
+              <div class="chip-row" id="filtro-severidade">
+                <button class="chip is-active" data-sev="alto" type="button">Alto</button>
+                <button class="chip is-active" data-sev="medio" type="button">Médio</button>
+                <button class="chip is-active" data-sev="baixo" type="button">Baixo</button>
+              </div>
+            </div>
+            <div class="filter-group">
+              <span class="filter-group__label">Tipo de ocorrência</span>
+              <div class="chip-row" id="filtro-tipo">${tiposChips}</div>
+            </div>
+          </div>
+          <div class="card" style="padding:18px">
+            <span class="filter-group__label" style="display:block;margin-bottom:12px">Ocorrências recentes</span>
+            <div class="occ-list" id="occ-list"></div>
+          </div>
+        </aside>
+        <div class="map-wrap">
+          <div id="map" role="application" aria-label="Mapa de ocorrências"></div>
+          <div class="map-controls">
+            <button class="map-control-btn" id="btn-heatmap" type="button" title="Ativar mapa de calor">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg>
+              Mapa de calor
+            </button>
+          </div>
+          <div class="map-legend">
+            <div class="map-legend__row"><span class="legend-dot" style="background:${DATA.severidades.alto.cor}"></span> Risco alto</div>
+            <div class="map-legend__row"><span class="legend-dot" style="background:${DATA.severidades.medio.cor}"></span> Risco médio</div>
+            <div class="map-legend__row"><span class="legend-dot" style="background:${DATA.severidades.baixo.cor}"></span> Risco baixo</div>
+          </div>
+        </div>
+      </div>
+    </section>
+  `;
+  }
+
+  function pageDashboard() {
+    return `
+    <section class="page-head">
+      <div class="container">
+        <h1 class="page-title">Dashboard de Estatísticas</h1>
+        <p class="page-sub">Análise visual e tendências das ocorrências registradas</p>
+      </div>
+    </section>
+    <section class="container" style="padding-bottom: 56px;">
+      <div class="section__head" style="margin-top: 20px;">
+        <h2 class="section__title" style="font-size: 1.3rem;">Tendências (Últimos 7 dias)</h2>
+      </div>
+      <div class="tendencias-grid" id="tendencias-grid">
+        <p style="color: var(--text-muted);">Carregando tendências...</p>
+      </div>
+      <div class="section__head" style="margin-top: 40px;">
+        <h2 class="section__title" style="font-size: 1.3rem;">Gráficos Detalhados</h2>
+      </div>
+      <div class="dashboard-grid">
+        <div class="card card--pad-lg">
+          <h3 class="card__title">Ocorrências por Tipo</h3>
+          <div class="chart-container"><canvas id="chart-tipos"></canvas></div>
+        </div>
+        <div class="card card--pad-lg">
+          <h3 class="card__title">Nível de Severidade</h3>
+          <div class="chart-container"><canvas id="chart-severidade"></canvas></div>
+        </div>
+        <div class="card card--pad-lg">
+          <h3 class="card__title">Top 5 Bairros</h3>
+          <div class="chart-container"><canvas id="chart-bairros"></canvas></div>
+        </div>
+        <div class="card card--pad-lg" style="grid-column: 1 / -1;">
+          <h3 class="card__title">Ocorrências nos últimos 7 dias</h3>
+          <div class="chart-container" style="height: 300px;"><canvas id="chart-timeline"></canvas></div>
+        </div>
+      </div>
+    </section>
+  `;
+  }
+
+
+  function pagePrevisao() {
+    return `
+    <section class="page-head">
+      <div class="container">
+        <span class="eyebrow">${icon("chart", 14)} Análise Preditiva</span>
+        <h1 class="page-title" style="margin-top: 12px;">Inteligência Estatística</h1>
+        <p class="page-sub">Padrões detectados automaticamente nos últimos 30 dias de ocorrências</p>
+      </div>
+    </section>
+    <section class="container" style="padding-bottom: 56px;">
+      <div id="previsao-loading" style="text-align: center; padding: 40px; color: var(--text-muted);">
+        Analisando padrões históricos...
+      </div>
+      <div id="previsao-cards" style="display: none;"></div>
+      <div id="previsao-vazia" style="display: none; text-align: center; padding: 60px 20px;">
+        <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="color: var(--text-faint); margin-bottom: 16px;">
+          <circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>
+        </svg>
+        <h3 style="margin-bottom: 8px;">Dados insuficientes</h3>
+        <p style="color: var(--text-muted); max-width: 400px; margin: 0 auto;">
+          São necessários pelo menos 30 dias de dados com ocorrências registradas para gerar previsões confiáveis.
+        </p>
+      </div>
+    </section>
+  `;
   }
 
   function pageDenuncias() {
@@ -289,23 +414,272 @@
     return `<section class="page-head"><div class="container page-head__row"><div><h1 class="page-title">Painel do Investigador</h1><p class="page-sub">Gerenciamento de denúncias</p></div><div style="display: flex; gap: 10px;"><button class="btn btn--soft btn--sm" id="btn-export-csv">${icon("chart", 16)} Exportar CSV</button><button class="btn btn--soft btn--sm" id="btn-export-pdf">${icon("chart", 16)} Exportar PDF</button><button class="btn btn--ghost btn--sm" id="btn-logout">Sair</button></div></div></section><section class="container"><div class="card card--pad-lg"><div id="tabela-denuncias">Carregando...</div></div></section>`;
   }
 
-  function pageDashboard() {
-    return `<section class="page-head"><div class="container"><h1 class="page-title">Dashboard de Estatísticas</h1></div></section><section class="container" style="padding-bottom: 56px;"><div class="section__head" style="margin-top: 20px;"><h2 class="section__title" style="font-size: 1.3rem;">Tendências (Últimos 7 dias)</h2></div><div class="tendencias-grid" id="tendencias-grid"><p style="color: var(--text-muted);">Carregando tendências...</p></div></section>`;
-  }
-
-  function pagePrevisao() {
-    return `<section class="page-head"><div class="container"><h1 class="page-title">Inteligência Estatística</h1></div></section><section class="container"><div id="previsao-loading" style="text-align: center; padding: 40px;">Analisando padrões...</div></section>`;
-  }
 
   let chartsInstances = {};
-  function initDashboard() {
-    fetch("/api/dashboard").then(res => res.json()).then(data => {
-      // Simplificado para o exemplo, mantenha sua lógica original de gráficos se preferir
-    }).catch(err => console.error(err));
-  }
-  function initPrevisao() { /* Mantenha sua lógica original */ }
 
-  // --- LÓGICA DO MAPA (Mantida igual ao seu código original, que estava funcionando) ---
+  function initDashboard() {
+    fetch("/api/dashboard")
+      .then(res => res.json())
+      .then(data => {
+        renderCharts(data);
+      })
+      .catch(err => console.error("Erro no dashboard:", err));
+
+    fetch("/api/tendencias")
+      .then(res => res.json())
+      .then(data => {
+        renderTendencias(data);
+      })
+      .catch(err => console.error("Erro nas tendências:", err));
+  }
+
+  function renderCharts(data) {
+
+    Object.values(chartsInstances).forEach(chart => chart.destroy());
+    chartsInstances = {};
+
+    const isDark = document.documentElement.getAttribute("data-theme") === "dark";
+    const textColor = isDark ? "#eaf1ff" : "#101a2e";
+    const gridColor = isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)";
+
+    Chart.defaults.color = textColor;
+    Chart.defaults.borderColor = gridColor;
+
+
+    if (document.getElementById("chart-tipos")) {
+      chartsInstances.tipos = new Chart(document.getElementById("chart-tipos"), {
+        type: "doughnut",
+        data: {
+          labels: data.tipos.map(t => t.nome),
+          datasets: [{
+            data: data.tipos.map(t => t.total),
+            backgroundColor: ["#17b8a6", "#f4a63b", "#ef5a63", "#43c98a", "#3b82f6", "#8b5cf6"],
+            borderWidth: 0
+          }]
+        },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: "bottom" } } }
+      });
+    }
+
+
+    if (document.getElementById("chart-severidade")) {
+      chartsInstances.severidade = new Chart(document.getElementById("chart-severidade"), {
+        type: "bar",
+        data: {
+          labels: data.severidades.map(s => s.nome),
+          datasets: [{
+            label: "Quantidade",
+            data: data.severidades.map(s => s.total),
+            backgroundColor: data.severidades.map(s => s.cor),
+            borderRadius: 8
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
+        }
+      });
+    }
+
+    if (document.getElementById("chart-bairros")) {
+      chartsInstances.bairros = new Chart(document.getElementById("chart-bairros"), {
+        type: "bar",
+        data: {
+          labels: data.bairros.map(b => b.bairro),
+          datasets: [{
+            label: "Ocorrências",
+            data: data.bairros.map(b => b.total),
+            backgroundColor: "#17b8a6",
+            borderRadius: 8
+          }]
+        },
+        options: {
+          indexAxis: "y",
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: { x: { beginAtZero: true, ticks: { stepSize: 1 } } }
+        }
+      });
+    }
+
+
+    if (document.getElementById("chart-timeline")) {
+      chartsInstances.timeline = new Chart(document.getElementById("chart-timeline"), {
+        type: "line",
+        data: {
+          labels: data.timeline.map(t => {
+            const d = new Date(t.dia);
+            return d.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" });
+          }),
+          datasets: [{
+            label: "Ocorrências",
+            data: data.timeline.map(t => t.total),
+            borderColor: "#17b8a6",
+            backgroundColor: "rgba(23, 184, 166, 0.1)",
+            fill: true,
+            tension: 0.4,
+            pointRadius: 4,
+            pointBackgroundColor: "#17b8a6"
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
+        }
+      });
+    }
+  }
+
+  function renderTendencias(tendencias) {
+    const container = document.getElementById("tendencias-grid");
+    if (!container) return;
+
+    if (!Array.isArray(tendencias) || tendencias.length === 0) {
+      container.innerHTML = `<p style="color: var(--text-muted);">Dados insuficientes para análise de tendências.</p>`;
+      return;
+    }
+
+    const html = tendencias.slice(0, 6).map(t => {
+      const isAlta = t.status === "alta";
+      const isBaixa = t.status === "baixa";
+      const icon = isAlta ? "↑" : isBaixa ? "↓" : "→";
+      const classe = isAlta ? "tendencia-up" : isBaixa ? "tendencia-down" : "tendencia-estavel";
+      const textoStatus = isAlta ? "aumento" : isBaixa ? "redução" : "estável";
+
+      return `
+      <div class="tendencia-card">
+        <div class="tendencia-info">
+          <span class="tendencia-nome">${t.tipo}</span>
+          <span class="tendencia-count">${t.atual} ocorrências</span>
+        </div>
+        <div class="tendencia-valor ${classe}">
+          <span class="tendencia-icon">${icon}</span>
+          <span class="tendencia-porcentagem">${t.variacao}%</span>
+          <span class="tendencia-legenda">${textoStatus}</span>
+        </div>
+      </div>
+    `;
+    }).join("");
+
+    container.innerHTML = html;
+  }
+
+
+  function initPrevisao() {
+    const loading = document.getElementById("previsao-loading");
+    const cards = document.getElementById("previsao-cards");
+    const vazia = document.getElementById("previsao-vazia");
+
+    if (!loading) return;
+
+    const token = localStorage.getItem("sentinela_token");
+
+    fetch("/api/painel/previsao", {
+      headers: { "Authorization": "Bearer " + (token || "") }
+    })
+      .then(res => {
+        if (res.status === 401) {
+          window.location.hash = "#/login";
+          return null;
+        }
+        return res.json();
+      })
+      .then(data => {
+        if (!data) return;
+
+        loading.style.display = "none";
+
+        if (!data.previsoes || data.previsoes.length === 0) {
+          vazia.style.display = "block";
+          return;
+        }
+
+        cards.style.display = "grid";
+        cards.style.gridTemplateColumns = "repeat(auto-fit, minmax(320px, 1fr))";
+        cards.style.gap = "20px";
+
+        const diasSemana = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];
+        const faixasHorarias = ["00h-06h", "06h-12h", "12h-18h", "18h-24h"];
+
+        const html = data.previsoes.map(p => {
+          const isCritico = p.risco === "critico";
+          const isElevado = p.risco === "elevado";
+          const isModerado = p.risco === "moderado";
+
+          let badgeCor = "var(--success)";
+          let badgeTexto = "Zona Tranquila";
+          let icone = "✓";
+          let classeCard = "";
+
+          if (isCritico) {
+            classeCard = " previsao-card--critico";
+            badgeCor = "var(--danger)";
+            badgeTexto = "Risco Crítico";
+            icone = "🔴";
+          } else if (isElevado) {
+            classeCard = " previsao-card--elevado";
+            badgeCor = "var(--accent)";
+            badgeTexto = "Risco Elevado";
+            icone = "🟠";
+          } else if (isModerado) {
+            classeCard = " previsao-card--moderado";
+            badgeCor = "#f4a63b";
+            badgeTexto = "Risco Moderado";
+            icone = "🟡";
+          }
+
+          const diaNome = diasSemana[p.dia_semana] || "Desconhecido";
+          const faixaNome = faixasHorarias[p.faixa_horaria] || "Desconhecida";
+          const isHoje = p.dia_semana === data.dia_atual;
+
+          return `
+        <div class="previsao-card${classeCard}">
+          <div class="previsao-header">
+            <span class="previsao-badge" style="background: ${badgeCor}; color: white;">
+              ${icone} ${badgeTexto}
+            </span>
+            ${isHoje ? '<span class="previsao-hoje">HOJE</span>' : ''}
+          </div>
+          <h3 class="previsao-titulo">${p.tipo_nome}</h3>
+          <div class="previsao-info">
+            <div class="previsao-info-item">
+              <span class="previsao-info-label">📅 Quando</span>
+              <span class="previsao-info-value">${diaNome} · ${faixaNome}</span>
+            </div>
+            <div class="previsao-info-item">
+              <span class="previsao-info-label">📍 Onde</span>
+              <span class="previsao-info-value">${p.bairro}</span>
+            </div>
+            <div class="previsao-info-item">
+              <span class="previsao-info-label"> Previsão</span>
+              <span class="previsao-info-value">${p.media_ocorrencias} ocorrências</span>
+            </div>
+          </div>
+          <div class="previsao-footer">
+            <span class="previsao-variacao" style="color: ${badgeCor};">
+              ${p.percentual_acima > 0 ? '+' : ''}${p.percentual_acima}% acima da média
+            </span>
+            <span class="previsao-amostras">
+              Baseado em ${p.amostras} amostras
+            </span>
+          </div>
+        </div>
+      `;
+        }).join("");
+
+        cards.innerHTML = html;
+      })
+      .catch(err => {
+        console.error("Erro ao carregar previsões:", err);
+        loading.innerHTML = `<p style="color: var(--danger);">Erro ao carregar previsões. Tente novamente.</p>`;
+      });
+  }
+
   let mapMarkers = [];
   let heatmapLayer = null;
   let heatmapAtivo = false;
@@ -1054,14 +1428,28 @@
     window.scrollTo({ top: 0, behavior: "instant" in window ? "instant" : "auto" });
     window.__sentinelaMap = null;
 
-    if (path === "mapa") setTimeout(initMapa, 100);
+    // Inicializações condicionais
+    if (path === "mapa") {
+      setTimeout(() => {
+        initMapa();
+      }, 100);
+    }
+
     if (path === "denuncias") initDenuncia();
     if (path === "denuncia-enviada") initDenunciaEnviada();
     if (path === "acompanhar") initAcompanhar(params.get("codigo"));
     if (path === "login") initLogin();
     if (path === "painel") initPainel();
-    if (path === "dashboard") initDashboard();
-    if (path === "previsao") initPrevisao();
+    if (path === "dashboard") {
+      setTimeout(() => {
+        initDashboard();
+      }, 100);
+    }
+    if (path === "previsao") {
+      setTimeout(() => {
+        initPrevisao();
+      }, 100);
+    }
   }
 
   function initEmergencia() {
