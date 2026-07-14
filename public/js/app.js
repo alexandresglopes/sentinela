@@ -19,7 +19,7 @@
 
   async function carregarGoogleMaps() {
     if (googleMapsCarregado || googleMapsCarregando) return;
-
+    
     if (window.google && window.google.maps && window.google.maps.Map) {
       googleMapsReady = true;
       googleMapsCarregado = true;
@@ -33,7 +33,7 @@
       const config = await response.json();
 
       if (!config.googleMapsApiKey) {
-        console.error(" API Key não configurada");
+        console.error("❌ API Key não configurada");
         googleMapsCarregando = false;
         return;
       }
@@ -43,20 +43,20 @@
         googleMapsCarregado = true;
         googleMapsCarregando = false;
         console.log("✅ Google Maps carregado com sucesso");
-
+        
         if (parseHash().path === "mapa") {
           setTimeout(initMapa, 100);
         }
       };
 
       window.gm_authFailure = function () {
-        console.error(" Falha na autenticação do Google Maps - API Key inválida");
+        console.error("❌ Falha na autenticação do Google Maps - API Key inválida");
         googleMapsCarregando = false;
-        showToast("Erro: Chave do Google Maps inválida. Verifique o console.");
+        showToast("Erro: Chave do Google Maps inválida.");
       };
 
       const script = document.createElement("script");
-      script.src = `https://maps.googleapis.com/maps/api/js?key=${config.googleMapsApiKey}&libraries=visualization&callback=initGoogleMaps`;      
+      script.src = `https://maps.googleapis.com/maps/api/js?key=${config.googleMapsApiKey}&libraries=visualization&callback=initGoogleMaps`;
       script.async = true;
       script.defer = true;
       script.id = "google-maps-script";
@@ -164,7 +164,7 @@
         <div class="container hero__grid">
           <div>
             <span class="eyebrow">${icon("shield", 14)} Segurança pública colaborativa</span>
-            <h1 class="hero__title">Cidades... mais seguras com <span>dados</span> e <span>participação cidadã</span></h1>
+            <h1 class="hero__title">Cidades! mais seguras com <span>dados</span> e <span>participação cidadã</span></h1>
             <p class="hero__lead">O Sentinela integra o mapeamento de ocorrências em tempo real com um canal de denúncias anônimas protegido.</p>
             <div class="hero__cta">
               <a href="#/mapa" class="btn btn--primary btn--lg" data-nav>${icon("map", 18)} Ver mapa de ocorrências</a>
@@ -688,27 +688,33 @@
   }
 
   async function renderMarkers(map) {
-    console.log("📍 Renderizando marcadores...");
+    console.log(" Renderizando marcadores...");
     const DATA = window.SENTINELA_DATA;
     if (!DATA) {
       console.error("❌ SENTINELA_DATA não encontrado");
       return;
     }
-
+    
     mapMarkers.forEach((m) => m.setMap(null));
     mapMarkers = [];
-
+    
     const list = filteredOccurrences();
-    console.log(`📊 Ocorrências filtradas: ${list.length}`);
-
+    console.log(`📊 Ocorrências filtradas: ${list.length} de ${DATA.ocorrencias.length} totais`);
+    
+    if (list.length === 0) {
+      console.warn("⚠️ Nenhuma ocorrência para mostrar");
+    }
+    
     list.forEach((o, index) => {
+      console.log(`Marcador ${index + 1}:`, o);
+      
       if (!o.lat || !o.lng) {
         console.warn(`⚠️ Ocorrência ${index} sem coordenadas:`, o);
         return;
       }
-
+      
       const cor = DATA.severidades[o.severidade]?.cor || "#17b8a6";
-
+      
       const marker = new google.maps.Marker({
         position: { lat: parseFloat(o.lat), lng: parseFloat(o.lng) },
         map: map,
@@ -722,7 +728,7 @@
           strokeWeight: 2,
         },
       });
-
+      
       const infoWindow = new google.maps.InfoWindow({
         content: `
           <div style="font-weight:bold;margin-bottom:4px;">${o.titulo || "Ocorrência"}</div>
@@ -730,44 +736,84 @@
           <p style="margin:8px 0;font-size:0.95rem;">${o.desc || o.descricao || "Sem descrição"}</p>
         `
       });
-
+      
       marker.addListener("click", () => {
         infoWindow.open(map, marker);
       });
-
+      
       marker._occId = o.id;
       mapMarkers.push(marker);
     });
-
+    
     console.log(`✅ ${mapMarkers.length} marcadores renderizados`);
-
+    
     if ($("#stat-total")) $("#stat-total").textContent = list.length;
     const alto = list.filter((o) => o.severidade === "alto").length;
     if ($("#stat-alto")) $("#stat-alto").textContent = alto;
+    
+    renderOccList(list, map);
+  }
+
+  function renderOccList(list, map) {
+    const DATA = window.SENTINELA_DATA;
+    const el = $("#occ-list");
+    if (!el || !DATA) return;
+    
+    if (!list.length) {
+      el.innerHTML = `<p class="card__desc">Nenhuma ocorrência com os filtros atuais.</p>`;
+      return;
+    }
+    
+    el.innerHTML = list
+      .slice(0, 6)
+      .map((o) => {
+        return `
+        <button class="occ-item" data-occ="${o.id}" type="button">
+          <span class="mini-badge badge--${o.severidade}">${DATA.severidades[o.severidade].nome}</span>
+          <span class="occ-item__body">
+            <span class="occ-item__title">${o.titulo}</span>
+            <span class="occ-item__meta">${o.bairro} · ${o.tempo}</span>
+          </span>
+        </button>`;
+      })
+      .join("");
+
+    $$(".occ-item", el).forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const id = Number(btn.dataset.occ);
+        const o = DATA.ocorrencias.find((x) => x.id === id);
+        const marker = mapMarkers.find((m) => m._occId === id);
+        if (o && marker) {
+          map.panTo({ lat: o.lat, lng: o.lng });
+          map.setZoom(15);
+          google.maps.event.trigger(marker, "click");
+        }
+      });
+    });
   }
 
   function initMapa() {
-    console.log("🗺️ Iniciando mapa...");
+    console.log("️ Iniciando mapa...");
     const DATA = window.SENTINELA_DATA;
     if (!DATA) {
       console.error("❌ Dados não carregados");
       setTimeout(initMapa, 500);
       return;
     }
-
+    
     if (!googleMapsReady) {
       console.log("⏳ Google Maps não está pronto...");
       setTimeout(initMapa, 500);
       return;
     }
-
+    
     const mapElement = document.getElementById("map");
     if (!mapElement) {
       console.error(" Elemento #map não encontrado");
       setTimeout(initMapa, 500);
       return;
     }
-
+    
     if (window.__sentinelaMap) {
       console.log("ℹ️ Mapa já inicializado");
       return;
@@ -780,7 +826,7 @@
     });
     window.__sentinelaMap = map;
     console.log("✅ Mapa criado com sucesso!");
-
+    
     renderMarkers(map);
 
     $$("#filtro-severidade .chip").forEach((chip) => {
@@ -791,6 +837,27 @@
         renderMarkers(map);
       });
     });
+
+    $("#btn-heatmap")?.addEventListener("click", () => {
+      toggleHeatmap(map);
+    });
+
+    $("#btn-registrar")?.addEventListener("click", () => {
+      showToast("Funcionalidade de registro em desenvolvimento");
+    });
+  }
+
+  function toggleHeatmap(map) {
+    heatmapAtivo = !heatmapAtivo;
+    const btn = $("#btn-heatmap");
+    
+    if (heatmapAtivo) {
+      btn?.classList.add("is-active");
+      showToast("Mapa de calor ativado");
+    } else {
+      btn?.classList.remove("is-active");
+      showToast("Mapa de calor desativado");
+    }
   }
 
   function initDenuncia() {
@@ -1317,7 +1384,7 @@
               <div style="color: var(--text); font-weight: 600; font-size: 15px; margin-bottom: 8px;">${e.evento}</div>
               <div style="display: flex; gap: 16px; color: var(--text-muted); font-size: 12px;">
                 <span>🕐 ${hora} · ${dataFormatada}</span>
-                <span>👤 ${e.autor || 'Sistema'}</span>
+                <span> ${e.autor || 'Sistema'}</span>
               </div>
             </div>
           </div>`;
