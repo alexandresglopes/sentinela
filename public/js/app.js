@@ -8,9 +8,17 @@
   let googleMapsCarregando = false;
   let googleMapsCarregado = false;
 
+  let chartsInstances = {};
+  let mapMarkers = [];
+  let heatmapLayer = null;
+  let heatmapAtivo = false;
+  let estatisticasConfirmacoes = {};
+  let tokenUsuario = null;
+  const activeFilters = { sev: new Set(["alto", "medio", "baixo"]), tipo: new Set() };
+  let chatInvestigadorAtual = { id: null, codigo: null };
+
   async function carregarGoogleMaps() {
-    if (googleMapsCarregado) return;
-    if (googleMapsCarregando) return;
+    if (googleMapsCarregado || googleMapsCarregando) return;
 
     if (window.google && window.google.maps && window.google.maps.Map) {
       googleMapsReady = true;
@@ -184,19 +192,8 @@
           </div>
         </div>
       </section>
-      <!-- Demais seções da página inicial mantidas para brevidade, o render() cuida disso -->
     `;
   }
-
-
-  let chartsInstances = {};
-  let mapMarkers = [];
-  let heatmapLayer = null;
-  let heatmapAtivo = false;
-  let estatisticasConfirmacoes = {};
-  let tokenUsuario = null;
-  const activeFilters = { sev: new Set(["alto", "medio", "baixo"]), tipo: new Set() };
-
 
   function pageMapa() {
     const DATA = window.SENTINELA_DATA;
@@ -204,126 +201,58 @@
     const tiposChips = DATA.tipos.map((t) => `<button class="chip is-active" data-tipo="${t.id}" type="button">${t.nome}</button>`).join("");
 
     return `
-    <section class="page-head">
-      <div class="container page-head__row">
-        <div>
-          <h1 class="page-title">Mapa de ocorrências</h1>
-          <p class="page-sub">Visualize ocorrências em tempo real, filtre por tipo e severidade.</p>
-        </div>
-        <button class="btn btn--primary" id="btn-registrar" type="button">${icon("pin", 18)} Registrar ocorrência</button>
-      </div>
-    </section>
-    <section class="container">
-      <div class="map-layout">
-        <aside class="map-sidebar">
-          <div class="stat-cards">
-            <div class="stat"><div class="stat__value" id="stat-total">0</div><div class="stat__label">Ocorrências</div></div>
-            <div class="stat"><div class="stat__value is-danger" id="stat-alto">0</div><div class="stat__label">Risco alto</div></div>
+      <section class="page-head">
+        <div class="container page-head__row">
+          <div>
+            <h1 class="page-title">Mapa de ocorrências</h1>
+            <p class="page-sub">Visualize ocorrências em tempo real, filtre por tipo e severidade.</p>
           </div>
-          <div class="card" style="padding:18px">
-            <div class="filter-group" style="margin-bottom:16px">
-              <span class="filter-group__label">Severidade</span>
-              <div class="chip-row" id="filtro-severidade">
-                <button class="chip is-active" data-sev="alto" type="button">Alto</button>
-                <button class="chip is-active" data-sev="medio" type="button">Médio</button>
-                <button class="chip is-active" data-sev="baixo" type="button">Baixo</button>
+          <button class="btn btn--primary" id="btn-registrar" type="button">${icon("pin", 18)} Registrar ocorrência</button>
+        </div>
+      </section>
+      <section class="container">
+        <div class="map-layout">
+          <aside class="map-sidebar">
+            <div class="stat-cards">
+              <div class="stat"><div class="stat__value" id="stat-total">0</div><div class="stat__label">Ocorrências</div></div>
+              <div class="stat"><div class="stat__value is-danger" id="stat-alto">0</div><div class="stat__label">Risco alto</div></div>
+            </div>
+            <div class="card" style="padding:18px">
+              <div class="filter-group" style="margin-bottom:16px">
+                <span class="filter-group__label">Severidade</span>
+                <div class="chip-row" id="filtro-severidade">
+                  <button class="chip is-active" data-sev="alto" type="button">Alto</button>
+                  <button class="chip is-active" data-sev="medio" type="button">Médio</button>
+                  <button class="chip is-active" data-sev="baixo" type="button">Baixo</button>
+                </div>
+              </div>
+              <div class="filter-group">
+                <span class="filter-group__label">Tipo de ocorrência</span>
+                <div class="chip-row" id="filtro-tipo">${tiposChips}</div>
               </div>
             </div>
-            <div class="filter-group">
-              <span class="filter-group__label">Tipo de ocorrência</span>
-              <div class="chip-row" id="filtro-tipo">${tiposChips}</div>
+            <div class="card" style="padding:18px">
+              <span class="filter-group__label" style="display:block;margin-bottom:12px">Ocorrências recentes</span>
+              <div class="occ-list" id="occ-list"></div>
+            </div>
+          </aside>
+          <div class="map-wrap">
+            <div id="map" role="application" aria-label="Mapa de ocorrências"></div>
+            <div class="map-controls">
+              <button class="map-control-btn" id="btn-heatmap" type="button" title="Ativar mapa de calor">
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg>
+                Mapa de calor
+              </button>
+            </div>
+            <div class="map-legend">
+              <div class="map-legend__row"><span class="legend-dot" style="background:${DATA.severidades.alto.cor}"></span> Risco alto</div>
+              <div class="map-legend__row"><span class="legend-dot" style="background:${DATA.severidades.medio.cor}"></span> Risco médio</div>
+              <div class="map-legend__row"><span class="legend-dot" style="background:${DATA.severidades.baixo.cor}"></span> Risco baixo</div>
             </div>
           </div>
-          <div class="card" style="padding:18px">
-            <span class="filter-group__label" style="display:block;margin-bottom:12px">Ocorrências recentes</span>
-            <div class="occ-list" id="occ-list"></div>
-          </div>
-        </aside>
-        <div class="map-wrap">
-          <div id="map" role="application" aria-label="Mapa de ocorrências"></div>
-          <div class="map-controls">
-            <button class="map-control-btn" id="btn-heatmap" type="button" title="Ativar mapa de calor">
-              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg>
-              Mapa de calor
-            </button>
-          </div>
-          <div class="map-legend">
-            <div class="map-legend__row"><span class="legend-dot" style="background:${DATA.severidades.alto.cor}"></span> Risco alto</div>
-            <div class="map-legend__row"><span class="legend-dot" style="background:${DATA.severidades.medio.cor}"></span> Risco médio</div>
-            <div class="map-legend__row"><span class="legend-dot" style="background:${DATA.severidades.baixo.cor}"></span> Risco baixo</div>
-          </div>
         </div>
-      </div>
-    </section>
-  `;
-  }
-
-  function pageDashboard() {
-    return `
-    <section class="page-head">
-      <div class="container">
-        <h1 class="page-title">Dashboard de Estatísticas</h1>
-        <p class="page-sub">Análise visual e tendências das ocorrências registradas</p>
-      </div>
-    </section>
-    <section class="container" style="padding-bottom: 56px;">
-      <div class="section__head" style="margin-top: 20px;">
-        <h2 class="section__title" style="font-size: 1.3rem;">Tendências (Últimos 7 dias)</h2>
-      </div>
-      <div class="tendencias-grid" id="tendencias-grid">
-        <p style="color: var(--text-muted);">Carregando tendências...</p>
-      </div>
-      <div class="section__head" style="margin-top: 40px;">
-        <h2 class="section__title" style="font-size: 1.3rem;">Gráficos Detalhados</h2>
-      </div>
-      <div class="dashboard-grid">
-        <div class="card card--pad-lg">
-          <h3 class="card__title">Ocorrências por Tipo</h3>
-          <div class="chart-container"><canvas id="chart-tipos"></canvas></div>
-        </div>
-        <div class="card card--pad-lg">
-          <h3 class="card__title">Nível de Severidade</h3>
-          <div class="chart-container"><canvas id="chart-severidade"></canvas></div>
-        </div>
-        <div class="card card--pad-lg">
-          <h3 class="card__title">Top 5 Bairros</h3>
-          <div class="chart-container"><canvas id="chart-bairros"></canvas></div>
-        </div>
-        <div class="card card--pad-lg" style="grid-column: 1 / -1;">
-          <h3 class="card__title">Ocorrências nos últimos 7 dias</h3>
-          <div class="chart-container" style="height: 300px;"><canvas id="chart-timeline"></canvas></div>
-        </div>
-      </div>
-    </section>
-  `;
-  }
-
-
-  function pagePrevisao() {
-    return `
-    <section class="page-head">
-      <div class="container">
-        <span class="eyebrow">${icon("chart", 14)} Análise Preditiva</span>
-        <h1 class="page-title" style="margin-top: 12px;">Inteligência Estatística</h1>
-        <p class="page-sub">Padrões detectados automaticamente nos últimos 30 dias de ocorrências</p>
-      </div>
-    </section>
-    <section class="container" style="padding-bottom: 56px;">
-      <div id="previsao-loading" style="text-align: center; padding: 40px; color: var(--text-muted);">
-        Analisando padrões históricos...
-      </div>
-      <div id="previsao-cards" style="display: none;"></div>
-      <div id="previsao-vazia" style="display: none; text-align: center; padding: 60px 20px;">
-        <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="color: var(--text-faint); margin-bottom: 16px;">
-          <circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>
-        </svg>
-        <h3 style="margin-bottom: 8px;">Dados insuficientes</h3>
-        <p style="color: var(--text-muted); max-width: 400px; margin: 0 auto;">
-          São necessários pelo menos 30 dias de dados com ocorrências registradas para gerar previsões confiáveis.
-        </p>
-      </div>
-    </section>
-  `;
+      </section>
+    `;
   }
 
   function pageDenuncias() {
@@ -345,65 +274,59 @@
       return `<section class="page-head"><div class="container"><h1 class="page-title">Acompanhar denúncia</h1><p class="page-sub">Informe o código anônimo recebido para acessar o chat seguro.</p></div></section><section class="container"><div class="chat-layout"><form class="card card--pad-lg" id="form-codigo"><div class="field"><label for="codigo">Código anônimo</label><div class="input-group"><span class="input-prefix">DNC-</span><input class="input input-with-prefix" id="codigo" type="text" placeholder="Ex.: 4821" autocomplete="off" required maxlength="4" pattern="[0-9]*" /></div></div><button class="btn btn--primary btn--lg btn--block" type="submit">${icon("chat", 18)} Acessar chat seguro</button></form></div></section>`;
     }
 
-
     return `
-    <section class="page-head">
-      <div class="container page-head__row">
-        <div>
-          <h1 class="page-title">Acompanhar denúncia.</h1>
-          <p class="page-sub">Denúncia <strong>${codigo}</strong> · comunicação criptografada e anônima.</p>
+      <section class="page-head">
+        <div class="container page-head__row">
+          <div>
+            <h1 class="page-title">Acompanhar denúncia</h1>
+            <p class="page-sub">Denúncia <strong>${codigo}</strong> · comunicação criptografada e anônima.</p>
+          </div>
+          <a href="#/acompanhar" class="btn btn--ghost btn--sm" data-nav>Trocar código</a>
         </div>
-        <a href="#/acompanhar" class="btn btn--ghost btn--sm" data-nav>Trocar código</a>
-      </div>
-    </section>
-    <section class="container">
-      <div class="chat-layout">
-        <div class="chat-tabs">
-          <button class="chat-tab is-active" data-tab="conversa">
-            ${icon("chat", 16)} Conversa
-          </button>
-          <button class="chat-tab" data-tab="historico" onclick="testeAlert()">
-            ${icon("clock", 16)} Histórico
-          </button>
-        </div>
-        
-        <div class="chat-tab-content" id="tab-conversa">
-          <div class="chat">
-            <div class="chat__head">
-              <span class="chat__avatar">${icon("users")}</span>
-              <div class="chat__who">
-                <strong>Investigador responsável</strong>
-                <span>Online</span>
+      </section>
+      <section class="container">
+        <div class="chat-layout">
+          <div class="chat-tabs">
+            <button class="chat-tab is-active" data-tab="conversa">
+              ${icon("chat", 16)} Conversa
+            </button>
+            <button class="chat-tab" data-tab="historico">
+              ${icon("clock", 16)} Histórico
+            </button>
+          </div>
+          
+          <div class="chat-tab-content" id="tab-conversa">
+            <div class="chat">
+              <div class="chat__head">
+                <span class="chat__avatar">${icon("users")}</span>
+                <div class="chat__who">
+                  <strong>Investigador responsável</strong>
+                  <span>Online</span>
+                </div>
+                <span class="chat__lock">${icon("lock", 15)} Criptografado</span>
               </div>
-              <span class="chat__lock">${icon("lock", 15)} Criptografado</span>
-            </div>
-            <div class="chat__body" id="chat-body"></div>
-            <form class="chat__foot" id="chat-form">
-              <input class="input" id="chat-input" type="text" placeholder="Escreva sua mensagem…" autocomplete="off" aria-label="Mensagem" />
-              <button class="btn btn--primary" type="submit" aria-label="Enviar">${icon("send", 18)}</button>
-            </form>
-          </div>
-        </div>
-        
-        <div class="chat-tab-content" id="tab-historico" style="display: none;">
-          <div class="timeline-card">
-            <div class="timeline-header">
-              <h3>${icon("clock", 20)} Linha do Tempo</h3>
-              <p>Todas as ações realizadas nesta denúncia</p>
-            </div>
-            <div class="timeline-container" id="timeline-publica">
-              <p style="text-align: center; color: var(--text-muted); padding: 20px;">Carregando histórico...</p>
+              <div class="chat__body" id="chat-body"></div>
+              <form class="chat__foot" id="chat-form">
+                <input class="input" id="chat-input" type="text" placeholder="Escreva sua mensagem…" autocomplete="off" aria-label="Mensagem" />
+                <button class="btn btn--primary" type="submit" aria-label="Enviar">${icon("send", 18)}</button>
+              </form>
             </div>
           </div>
+          
+          <div class="chat-tab-content" id="tab-historico" style="display: none;">
+            <div class="timeline-card">
+              <div class="timeline-header">
+                <h3>${icon("clock", 20)} Linha do Tempo</h3>
+                <p>Todas as ações realizadas nesta denúncia</p>
+              </div>
+              <div class="timeline-container" id="timeline-publica">
+                <p style="text-align: center; color: var(--text-muted); padding: 20px;">Carregando histórico...</p>
+              </div>
+            </div>
+          </div>
         </div>
-      </div>
-    </section>
-  `;
-
-  }
-
-  function testeAlert() {
-    alert("teste");
+      </section>
+    `;
   }
 
   function pageLogin() {
@@ -414,27 +337,86 @@
     return `<section class="page-head"><div class="container page-head__row"><div><h1 class="page-title">Painel do Investigador</h1><p class="page-sub">Gerenciamento de denúncias</p></div><div style="display: flex; gap: 10px;"><button class="btn btn--soft btn--sm" id="btn-export-csv">${icon("chart", 16)} Exportar CSV</button><button class="btn btn--soft btn--sm" id="btn-export-pdf">${icon("chart", 16)} Exportar PDF</button><button class="btn btn--ghost btn--sm" id="btn-logout">Sair</button></div></div></section><section class="container"><div class="card card--pad-lg"><div id="tabela-denuncias">Carregando...</div></div></section>`;
   }
 
+  function pageDashboard() {
+    return `
+      <section class="page-head">
+        <div class="container">
+          <h1 class="page-title">Dashboard de Estatísticas</h1>
+          <p class="page-sub">Análise visual e tendências das ocorrências registradas</p>
+        </div>
+      </section>
+      <section class="container" style="padding-bottom: 56px;">
+        <div class="section__head" style="margin-top: 20px;">
+          <h2 class="section__title" style="font-size: 1.3rem;">Tendências (Últimos 7 dias)</h2>
+        </div>
+        <div class="tendencias-grid" id="tendencias-grid">
+          <p style="color: var(--text-muted);">Carregando tendências...</p>
+        </div>
+        <div class="section__head" style="margin-top: 40px;">
+          <h2 class="section__title" style="font-size: 1.3rem;">Gráficos Detalhados</h2>
+        </div>
+        <div class="dashboard-grid">
+          <div class="card card--pad-lg">
+            <h3 class="card__title">Ocorrências por Tipo</h3>
+            <div class="chart-container"><canvas id="chart-tipos"></canvas></div>
+          </div>
+          <div class="card card--pad-lg">
+            <h3 class="card__title">Nível de Severidade</h3>
+            <div class="chart-container"><canvas id="chart-severidade"></canvas></div>
+          </div>
+          <div class="card card--pad-lg">
+            <h3 class="card__title">Top 5 Bairros</h3>
+            <div class="chart-container"><canvas id="chart-bairros"></canvas></div>
+          </div>
+          <div class="card card--pad-lg" style="grid-column: 1 / -1;">
+            <h3 class="card__title">Ocorrências nos últimos 7 dias</h3>
+            <div class="chart-container" style="height: 300px;"><canvas id="chart-timeline"></canvas></div>
+          </div>
+        </div>
+      </section>
+    `;
+  }
 
-  let chartsInstances = {};
+  function pagePrevisao() {
+    return `
+      <section class="page-head">
+        <div class="container">
+          <span class="eyebrow">${icon("chart", 14)} Análise Preditiva</span>
+          <h1 class="page-title" style="margin-top: 12px;">Inteligência Estatística</h1>
+          <p class="page-sub">Padrões detectados automaticamente nos últimos 30 dias de ocorrências</p>
+        </div>
+      </section>
+      <section class="container" style="padding-bottom: 56px;">
+        <div id="previsao-loading" style="text-align: center; padding: 40px; color: var(--text-muted);">
+          Analisando padrões históricos...
+        </div>
+        <div id="previsao-cards" style="display: none;"></div>
+        <div id="previsao-vazia" style="display: none; text-align: center; padding: 60px 20px;">
+          <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="color: var(--text-faint); margin-bottom: 16px;">
+            <circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>
+          </svg>
+          <h3 style="margin-bottom: 8px;">Dados insuficientes</h3>
+          <p style="color: var(--text-muted); max-width: 400px; margin: 0 auto;">
+            São necessários pelo menos 30 dias de dados com ocorrências registradas para gerar previsões confiáveis.
+          </p>
+        </div>
+      </section>
+    `;
+  }
 
   function initDashboard() {
     fetch("/api/dashboard")
       .then(res => res.json())
-      .then(data => {
-        renderCharts(data);
-      })
+      .then(data => renderCharts(data))
       .catch(err => console.error("Erro no dashboard:", err));
 
     fetch("/api/tendencias")
       .then(res => res.json())
-      .then(data => {
-        renderTendencias(data);
-      })
+      .then(data => renderTendencias(data))
       .catch(err => console.error("Erro nas tendências:", err));
   }
 
   function renderCharts(data) {
-
     Object.values(chartsInstances).forEach(chart => chart.destroy());
     chartsInstances = {};
 
@@ -444,7 +426,6 @@
 
     Chart.defaults.color = textColor;
     Chart.defaults.borderColor = gridColor;
-
 
     if (document.getElementById("chart-tipos")) {
       chartsInstances.tipos = new Chart(document.getElementById("chart-tipos"), {
@@ -460,7 +441,6 @@
         options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: "bottom" } } }
       });
     }
-
 
     if (document.getElementById("chart-severidade")) {
       chartsInstances.severidade = new Chart(document.getElementById("chart-severidade"), {
@@ -505,7 +485,6 @@
       });
     }
 
-
     if (document.getElementById("chart-timeline")) {
       chartsInstances.timeline = new Chart(document.getElementById("chart-timeline"), {
         type: "line",
@@ -547,28 +526,27 @@
     const html = tendencias.slice(0, 6).map(t => {
       const isAlta = t.status === "alta";
       const isBaixa = t.status === "baixa";
-      const icon = isAlta ? "↑" : isBaixa ? "↓" : "→";
+      const iconChar = isAlta ? "↑" : isBaixa ? "↓" : "→";
       const classe = isAlta ? "tendencia-up" : isBaixa ? "tendencia-down" : "tendencia-estavel";
       const textoStatus = isAlta ? "aumento" : isBaixa ? "redução" : "estável";
 
       return `
-      <div class="tendencia-card">
-        <div class="tendencia-info">
-          <span class="tendencia-nome">${t.tipo}</span>
-          <span class="tendencia-count">${t.atual} ocorrências</span>
+        <div class="tendencia-card">
+          <div class="tendencia-info">
+            <span class="tendencia-nome">${t.tipo}</span>
+            <span class="tendencia-count">${t.atual} ocorrências</span>
+          </div>
+          <div class="tendencia-valor ${classe}">
+            <span class="tendencia-icon">${iconChar}</span>
+            <span class="tendencia-porcentagem">${t.variacao}%</span>
+            <span class="tendencia-legenda">${textoStatus}</span>
+          </div>
         </div>
-        <div class="tendencia-valor ${classe}">
-          <span class="tendencia-icon">${icon}</span>
-          <span class="tendencia-porcentagem">${t.variacao}%</span>
-          <span class="tendencia-legenda">${textoStatus}</span>
-        </div>
-      </div>
-    `;
+      `;
     }).join("");
 
     container.innerHTML = html;
   }
-
 
   function initPrevisao() {
     const loading = document.getElementById("previsao-loading");
@@ -638,38 +616,38 @@
           const isHoje = p.dia_semana === data.dia_atual;
 
           return `
-        <div class="previsao-card${classeCard}">
-          <div class="previsao-header">
-            <span class="previsao-badge" style="background: ${badgeCor}; color: white;">
-              ${icone} ${badgeTexto}
-            </span>
-            ${isHoje ? '<span class="previsao-hoje">HOJE</span>' : ''}
-          </div>
-          <h3 class="previsao-titulo">${p.tipo_nome}</h3>
-          <div class="previsao-info">
-            <div class="previsao-info-item">
-              <span class="previsao-info-label">📅 Quando</span>
-              <span class="previsao-info-value">${diaNome} · ${faixaNome}</span>
+            <div class="previsao-card${classeCard}">
+              <div class="previsao-header">
+                <span class="previsao-badge" style="background: ${badgeCor}; color: white;">
+                  ${icone} ${badgeTexto}
+                </span>
+                ${isHoje ? '<span class="previsao-hoje">HOJE</span>' : ''}
+              </div>
+              <h3 class="previsao-titulo">${p.tipo_nome}</h3>
+              <div class="previsao-info">
+                <div class="previsao-info-item">
+                  <span class="previsao-info-label">📅 Quando</span>
+                  <span class="previsao-info-value">${diaNome} · ${faixaNome}</span>
+                </div>
+                <div class="previsao-info-item">
+                  <span class="previsao-info-label">📍 Onde</span>
+                  <span class="previsao-info-value">${p.bairro}</span>
+                </div>
+                <div class="previsao-info-item">
+                  <span class="previsao-info-label"> Previsão</span>
+                  <span class="previsao-info-value">${p.media_ocorrencias} ocorrências</span>
+                </div>
+              </div>
+              <div class="previsao-footer">
+                <span class="previsao-variacao" style="color: ${badgeCor};">
+                  ${p.percentual_acima > 0 ? '+' : ''}${p.percentual_acima}% acima da média
+                </span>
+                <span class="previsao-amostras">
+                  Baseado em ${p.amostras} amostras
+                </span>
+              </div>
             </div>
-            <div class="previsao-info-item">
-              <span class="previsao-info-label">📍 Onde</span>
-              <span class="previsao-info-value">${p.bairro}</span>
-            </div>
-            <div class="previsao-info-item">
-              <span class="previsao-info-label"> Previsão</span>
-              <span class="previsao-info-value">${p.media_ocorrencias} ocorrências</span>
-            </div>
-          </div>
-          <div class="previsao-footer">
-            <span class="previsao-variacao" style="color: ${badgeCor};">
-              ${p.percentual_acima > 0 ? '+' : ''}${p.percentual_acima}% acima da média
-            </span>
-            <span class="previsao-amostras">
-              Baseado em ${p.amostras} amostras
-            </span>
-          </div>
-        </div>
-      `;
+          `;
         }).join("");
 
         cards.innerHTML = html;
@@ -679,13 +657,6 @@
         loading.innerHTML = `<p style="color: var(--danger);">Erro ao carregar previsões. Tente novamente.</p>`;
       });
   }
-
-  let mapMarkers = [];
-  let heatmapLayer = null;
-  let heatmapAtivo = false;
-  let estatisticasConfirmacoes = {};
-  let tokenUsuario = null;
-  const activeFilters = { sev: new Set(["alto", "medio", "baixo"]), tipo: new Set() };
 
   function getTokenUsuario() {
     if (tokenUsuario) return tokenUsuario;
@@ -746,7 +717,6 @@
     });
   }
 
-  // --- LÓGICA DE DENÚNCIA E CHAT DO USUÁRIO ---
   function initDenuncia() {
     const form = $("#form-denuncia");
     if (!form) return;
@@ -790,12 +760,9 @@
       return;
     }
 
-
     setTimeout(() => {
-
       const tabs = $$(".chat-tab");
       tabs.forEach(tab => {
-
         const newTab = tab.cloneNode(true);
         tab.parentNode.replaceChild(newTab, tab);
 
@@ -809,13 +776,11 @@
           });
           document.getElementById(`tab-${tabName}`).style.display = "block";
 
-
           if (tabName === "historico") {
             carregarTimelinePublica(codigo);
           }
         });
       });
-
 
       initChat(codigo);
     }, 100);
@@ -831,15 +796,10 @@
     container.innerHTML = `<p style="text-align: center; color: var(--text-muted); padding: 20px;">Carregando histórico...</p>`;
 
     try {
-      console.log("Buscando timeline para:", codigo);
       const res = await fetch(`/api/timeline-publica/${encodeURIComponent(codigo)}`);
-
-      if (!res.ok) {
-        throw new Error(`Erro ${res.status}: ${res.statusText}`);
-      }
+      if (!res.ok) throw new Error(`Erro ${res.status}: ${res.statusText}`);
 
       const eventos = await res.json();
-      console.log("Eventos recebidos:", eventos);
 
       if (!eventos || eventos.length === 0) {
         container.innerHTML = `<p style="text-align: center; color: var(--text-muted); padding: 20px;">Nenhum evento registrado ainda.</p>`;
@@ -853,17 +813,17 @@
         const isLast = index === eventos.length - 1;
 
         return `
-        <div class="timeline-item ${isLast ? 'timeline-item--last' : ''}">
-          <div class="timeline-marker"></div>
-          <div class="timeline-content">
-            <div class="timeline-evento">${e.evento}</div>
-            <div class="timeline-meta">
-              <span>🕐 ${hora} · ${dataFormatada}</span>
-              <span> ${e.autor || 'Sistema'}</span>
+          <div class="timeline-item ${isLast ? 'timeline-item--last' : ''}">
+            <div class="timeline-marker"></div>
+            <div class="timeline-content">
+              <div class="timeline-evento">${e.evento}</div>
+              <div class="timeline-meta">
+                <span>🕐 ${hora} · ${dataFormatada}</span>
+                <span>👤 ${e.autor || 'Sistema'}</span>
+              </div>
             </div>
           </div>
-        </div>
-      `;
+        `;
       }).join("");
     } catch (err) {
       console.error("Erro ao carregar timeline:", err);
@@ -926,7 +886,6 @@
     });
   }
 
-  // --- LÓGICA DO PAINEL DO INVESTIGADOR (CORRIGIDA) ---
   function initLogin() {
     const form = $("#form-login");
     if (!form) return;
@@ -1050,7 +1009,6 @@
     htmlMobile += `</div>`;
     container.innerHTML = `<div class="tabela-desktop">${htmlDesktop}</div><div class="tabela-mobile">${htmlMobile}</div>`;
 
-    // Listeners
     container.querySelectorAll(".status-select").forEach(select => {
       select.addEventListener("change", async (e) => {
         const id = e.target.dataset.id;
@@ -1081,7 +1039,6 @@
     });
   }
 
-  // --- MODAIS DO PAINEL ---
   async function abrirModalDetalhes(id, token) {
     const modalHTML = `
       <div class="modal-overlay" id="modal-detalhes-overlay" style="display:flex; z-index: 2000;">
@@ -1117,77 +1074,29 @@
     }
   }
 
-  let chatInvestigadorAtual = { id: null, codigo: null };
-
-
-  // async function abrirModalChatInvestigador(denunciaId, codigo, token) {
-  //   chatInvestigadorAtual = { id: Number(denunciaId), codigo: codigo };
-
-  //   const modalHTML = `
-  //   <div class="modal-overlay" id="modal-chat-inv-overlay" style="display:flex; z-index: 2000;">
-  //     <div class="modal-content" style="max-width: 600px; height: 500px; display: flex; flex-direction: column;">
-  //       <div class="modal-header">
-  //         <h3 class="modal-title">Chat com Denunciante <span style="font-size:0.8rem; color:var(--primary); margin-left:8px;">${codigo}</span></h3>
-  //         <!--button class="modal-close" id="btn-fechar-chat-inv" style="color:#ef5a63; font-weight: bold;" type="button" aria-label="Fechar">✕</button-->
-
-  //         <button class="modal-close" id="btn-fechar-chat-inv" type="button" aria-label="Fechar">✕</button>
-  //       </div>
-  //       <div class="chat-investigador-container" style="flex: 1; display: flex; flex-direction: column;">
-  //         <div class="chat-investigador-messages" id="chat-inv-messages">
-  //           <p style="text-align: center; color: var(--text-muted); margin-top: 20px;">Carregando mensagens...</p>
-  //         </div>
-  //         <div class="chat-investigador-input">
-  //           <input type="text" id="chat-inv-input" placeholder="Escreva sua resposta...">
-  //           <button id="btn-enviar-chat-inv">Enviar</button>
-  //         </div>
-  //       </div>
-  //     </div>
-  //   </div>`;
-  //   document.body.insertAdjacentHTML("beforeend", modalHTML);
-
-  //   // Adiciona os event listeners
-  //   document.getElementById("btn-fechar-chat-inv").addEventListener("click", () => {
-  //     document.getElementById("modal-chat-inv-overlay").remove();
-  //   });
-
-  //   document.getElementById("btn-enviar-chat-inv").addEventListener("click", enviarMensagemInvestigador);
-
-  //   document.getElementById("chat-inv-input").addEventListener("keypress", (e) => {
-  //     if (e.key === "Enter") {
-  //       e.preventDefault();
-  //       enviarMensagemInvestigador();
-  //     }
-  //   });
-
-  //   await carregarMensagensChatInvestigador();
-  // }
-
-
   async function abrirModalChatInvestigador(denunciaId, codigo, token) {
     chatInvestigadorAtual = { id: Number(denunciaId), codigo: codigo };
 
     const modalHTML = `
-    <div class="modal-overlay" id="modal-chat-inv-overlay" style="display:flex; z-index: 2000;">
-      <div class="modal-content" style="max-width: 600px; height: 500px; display: flex; flex-direction: column;">
-        <div class="modal-header">
-          <h3 class="modal-title">Chat com Denunciante <span style="font-size:0.8rem; color:var(--primary); margin-left:8px;">${codigo}</span></h3>
-          <!--button class="modal-close" id="modal-chat-close-btn" style="color:#ef5a63; font-weight: bold;" type="button"></button-->
-          <button class="modal-close" id="modal-chat-close-btn" type="button" aria-label="Fechar">✕</button>
-        </div>
-        <div class="chat-investigador-container" style="flex: 1; display: flex; flex-direction: column;">
-          <div class="chat-investigador-messages" id="chat-inv-messages">
-            <p style="text-align: center; color: var(--text-muted); margin-top: 20px;">Carregando mensagens...</p>
+      <div class="modal-overlay" id="modal-chat-inv-overlay" style="display:flex; z-index: 2000;">
+        <div class="modal-content" style="max-width: 600px; height: 500px; display: flex; flex-direction: column;">
+          <div class="modal-header">
+            <h3 class="modal-title">Chat com Denunciante <span style="font-size:0.8rem; color:var(--primary); margin-left:8px;">${codigo}</span></h3>
+            <button class="modal-close" id="modal-chat-close-btn" type="button" aria-label="Fechar">✕</button>
           </div>
-          <div class="chat-investigador-input" style="display: flex; gap: 8px; padding: 12px; border-top: 1px solid var(--border);">
-            <input type="text" id="chat-inv-input" placeholder="Escreva sua resposta..." style="flex: 1; padding: 10px 16px; border: 1px solid var(--border); border-radius: 20px; font-size: 0.9rem; outline: none;">
-            <button id="modal-chat-send-btn" style="padding: 10px 20px; background: var(--primary); color: #fff; border: none; border-radius: 20px; cursor: pointer; font-weight: 600;">Enviar</button>
+          <div class="chat-investigador-container" style="flex: 1; display: flex; flex-direction: column;">
+            <div class="chat-investigador-messages" id="chat-inv-messages">
+              <p style="text-align: center; color: var(--text-muted); margin-top: 20px;">Carregando mensagens...</p>
+            </div>
+            <div class="chat-investigador-input" style="display: flex; gap: 8px; padding: 12px; border-top: 1px solid var(--border);">
+              <input type="text" id="chat-inv-input" placeholder="Escreva sua resposta..." style="flex: 1; padding: 10px 16px; border: 1px solid var(--border); border-radius: 20px; font-size: 0.9rem; outline: none;">
+              <button id="modal-chat-send-btn" style="padding: 10px 20px; background: var(--primary); color: #fff; border: none; border-radius: 20px; cursor: pointer; font-weight: 600;">Enviar</button>
+            </div>
           </div>
         </div>
-      </div>
-    </div>`;
+      </div>`;
 
     document.body.insertAdjacentHTML("beforeend", modalHTML);
-
 
     setTimeout(() => {
       const closeBtn = document.getElementById("modal-chat-close-btn");
@@ -1221,7 +1130,6 @@
     await carregarMensagensChatInvestigador();
   }
 
-
   window.enviarMensagemChatInvestigador = async function () {
     const input = document.getElementById("chat-inv-input");
     if (!input) return;
@@ -1235,7 +1143,6 @@
     const messagesDiv = document.getElementById("chat-inv-messages");
     if (!messagesDiv) return;
 
-
     const div = document.createElement("div");
     div.className = "chat-msg-inv investigador";
     div.style.cssText = "align-self: flex-end; background: var(--primary); color: #fff; padding: 10px 14px; border-radius: 12px; max-width: 80%; margin-bottom: 12px; border-bottom-right-radius: 4px;";
@@ -1244,7 +1151,6 @@
     messagesDiv.scrollTop = messagesDiv.scrollHeight;
 
     input.value = "";
-
 
     try {
       const response = await fetch("/api/chat-mensagem", {
@@ -1259,11 +1165,9 @@
       });
 
       if (!response.ok) throw new Error("Falha no servidor");
-
     } catch (err) {
       console.error("Erro ao enviar mensagem:", err);
       showToast("Erro ao enviar mensagem. Tente novamente.");
-
       if (div.parentNode) div.parentNode.removeChild(div);
     }
   };
@@ -1295,47 +1199,6 @@
       }
     } catch (err) {
       messagesDiv.innerHTML = `<p style="text-align: center; color: var(--danger);">Erro ao carregar chat.</p>`;
-    }
-  }
-
-  async function enviarMensagemInvestigador() {
-    const input = document.getElementById("chat-inv-input");
-    const texto = input.value.trim();
-    if (!texto || !chatInvestigadorAtual.id) return;
-
-    const agora = new Date();
-    const hora = String(agora.getHours()).padStart(2, "0") + ":" + String(agora.getMinutes()).padStart(2, "0");
-
-    // Atualização otimista na tela
-    const messagesDiv = document.getElementById("chat-inv-messages");
-    const div = document.createElement("div");
-    div.className = "chat-msg-inv investigador";
-    div.innerHTML = `${texto}<span class="hora-msg">${hora}</span>`;
-    messagesDiv.appendChild(div);
-    messagesDiv.scrollTop = messagesDiv.scrollHeight;
-    input.value = "";
-
-    // Envio para o backend
-    try {
-      const response = await fetch("/api/chat-mensagem", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          denuncia_id: Number(chatInvestigadorAtual.id),
-          autor: "in",
-          texto: texto,
-          hora: hora
-        })
-      });
-
-      if (!response.ok) {
-        throw new Error("Falha no servidor");
-      }
-    } catch (err) {
-      console.error("Erro ao enviar mensagem:", err);
-      showToast("Erro ao enviar mensagem. Tente novamente.");
-      // Reverte a mensagem na tela se falhar
-      messagesDiv.removeChild(div);
     }
   }
 
@@ -1391,7 +1254,6 @@
     }
   }
 
-  // --- ROTEAMENTO E INICIALIZAÇÃO ---
   function parseHash() {
     const raw = window.location.hash.replace(/^#\//, "") || "inicio";
     const [path, query] = raw.split("?");
@@ -1428,27 +1290,19 @@
     window.scrollTo({ top: 0, behavior: "instant" in window ? "instant" : "auto" });
     window.__sentinelaMap = null;
 
-    // Inicializações condicionais
     if (path === "mapa") {
-      setTimeout(() => {
-        initMapa();
-      }, 100);
+      setTimeout(() => { initMapa(); }, 100);
     }
-
     if (path === "denuncias") initDenuncia();
     if (path === "denuncia-enviada") initDenunciaEnviada();
     if (path === "acompanhar") initAcompanhar(params.get("codigo"));
     if (path === "login") initLogin();
     if (path === "painel") initPainel();
     if (path === "dashboard") {
-      setTimeout(() => {
-        initDashboard();
-      }, 100);
+      setTimeout(() => { initDashboard(); }, 100);
     }
     if (path === "previsao") {
-      setTimeout(() => {
-        initPrevisao();
-      }, 100);
+      setTimeout(() => { initPrevisao(); }, 100);
     }
   }
 
@@ -1456,7 +1310,6 @@
     if (document.getElementById("btn-emergencia-flutuante")) return;
     const btnHTML = `<button class="btn-emergencia-flutuante" id="btn-emergencia-flutuante" type="button" aria-label="Emergência" title="Números de emergência" style="position:fixed;bottom:24px;right:24px;width:56px;height:56px;border-radius:50%;background:#ef5a63;color:#fff;border:none;box-shadow:0 4px 12px rgba(239,90,99,0.4);cursor:pointer;z-index:999;display:flex;align-items:center;justify-content:center;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" width="24" height="24"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg></button>`;
     document.body.insertAdjacentHTML("beforeend", btnHTML);
-    // Adicione a lógica do modal de emergência aqui se desejar, ou mantenha sua função original initEmergencia
   }
 
   function init() {
