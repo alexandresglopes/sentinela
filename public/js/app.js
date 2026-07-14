@@ -237,7 +237,7 @@
           <button class="chat-tab is-active" data-tab="conversa">
             ${icon("chat", 16)} Conversa
           </button>
-          <button class="chat-tab" data-tab="historico">
+          <button class="chat-tab" data-tab="historico" onclick="testeAlert()">
             ${icon("clock", 16)} Histórico
           </button>
         </div>
@@ -274,6 +274,11 @@
       </div>
     </section>
   `;
+
+  }
+
+  function testeAlert() {
+    alert("teste");
   }
 
   function pageLogin() {
@@ -411,12 +416,12 @@
       return;
     }
 
-    
+
     setTimeout(() => {
-      
+
       const tabs = $$(".chat-tab");
       tabs.forEach(tab => {
-        
+
         const newTab = tab.cloneNode(true);
         tab.parentNode.replaceChild(newTab, tab);
 
@@ -430,14 +435,14 @@
           });
           document.getElementById(`tab-${tabName}`).style.display = "block";
 
-          
+
           if (tabName === "historico") {
             carregarTimelinePublica(codigo);
           }
         });
       });
 
-      
+
       initChat(codigo);
     }, 100);
   }
