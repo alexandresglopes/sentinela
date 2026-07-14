@@ -61,6 +61,7 @@ function verifyToken(req) {
   try {
     const JWT_SECRET = process.env.SESSION_SECRET;
     return jwt.verify(token, JWT_SECRET);
+    // eslint-disable-next-line no-unused-vars
   } catch (err) {
     return null;
   }
@@ -102,19 +103,16 @@ const server = http.createServer(async (req, res) => {
         return;
       }
 
-
       if (pathname.startsWith("/api/ocorrenciasdetalhes/") && req.method === "GET") {
         const ocorrenciaId = pathname.split("/")[3];
 
-
         if (pathname.includes("/confirmacoes")) {
-
+          // Ignora, deixa passar para outras rotas se necessário
         } else {
           const conexao = require("./config/conexao");
           const db = conexao.promise();
 
           try {
-
             const [rows] = await db.query(`
               SELECT 
                 o.id,
@@ -141,7 +139,6 @@ const server = http.createServer(async (req, res) => {
 
             const ocorrencia = rows[0];
 
-
             const [statsRows] = await db.query(`
               SELECT 
                 SUM(CASE WHEN tipo_confirmacao = 'confirmou' THEN 1 ELSE 0 END) as confirmou,
@@ -151,7 +148,6 @@ const server = http.createServer(async (req, res) => {
             `, [ocorrenciaId]);
 
             const stats = statsRows[0] || { confirmou: 0, falsa: 0 };
-
 
             sendJSON(res, 200, {
               ...ocorrencia,
@@ -251,8 +247,9 @@ const server = http.createServer(async (req, res) => {
       if (pathname === "/api/chat-mensagem" && req.method === "POST") {
         const data = await getRequestBody(req);
         const { denuncia_id, autor, texto, hora } = data;
+        
         const msgId = await MensagemChat.create({
-          denuncia_id,
+          denuncia_id: Number(denuncia_id),
           autor,
           texto,
           hora: hora || new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
@@ -261,13 +258,13 @@ const server = http.createServer(async (req, res) => {
 
         if (autor === 'in') {
           await Timeline.registrar({
-            denuncia_id: denuncia_id,
+            denuncia_id: Number(denuncia_id),
             evento: "Mensagem enviada pelo investigador",
             autor: "Investigador"
           });
         } else {
           await Timeline.registrar({
-            denuncia_id: denuncia_id,
+            denuncia_id: Number(denuncia_id),
             evento: "Nova mensagem do denunciante",
             autor: "Denunciante"
           });
@@ -284,8 +281,9 @@ const server = http.createServer(async (req, res) => {
           ];
           const respostaTexto = respostasAuto[Math.floor(Math.random() * respostasAuto.length)];
           const respostaHora = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+          
           await MensagemChat.create({
-            denuncia_id,
+            denuncia_id: Number(denuncia_id),
             autor: 'in',
             texto: respostaTexto,
             hora: respostaHora,
@@ -293,6 +291,7 @@ const server = http.createServer(async (req, res) => {
           });
           resposta = { autor: 'in', texto: respostaTexto, hora: respostaHora };
         }
+        
         sendJSON(res, 201, {
           mensagem: { id: msgId, autor, texto, hora },
           resposta: resposta
@@ -361,26 +360,26 @@ const server = http.createServer(async (req, res) => {
         return;
       }
 
-      // if (pathname === "/api/painel/denuncias" && req.method === "GET") {
-      //   const user = verifyToken(req);
-      //   if (!user) {
-      //     sendJSON(res, 401, { error: "Não autorizado" });
-      //     return;
-      //   }
-      //   const conexao = require("./config/conexao");
-      //   const db = conexao.promise();
-      //   const [rows] = await db.query(`
-      //     SELECT d.*, t.nome as tipo_nome, s.nome as severidade_nome
-      //     FROM denuncias d
-      //     JOIN tipos_ocorrencia t ON d.tipo_id = t.id
-      //     JOIN severidades s ON d.severidade_id = s.id
-      //     ORDER BY d.created_at DESC
-      //   `);
-      //   sendJSON(res, 200, rows);
-      //   return;
-      // }
+      // ✅ ROTA DESCOMENTADA E CORRIGIDA: Busca a lista de denúncias para o painel
+      if (pathname === "/api/painel/denuncias" && req.method === "GET") {
+        const user = verifyToken(req);
+        if (!user) {
+          sendJSON(res, 401, { error: "Não autorizado" });
+          return;
+        }
+        const conexao = require("./config/conexao");
+        const db = conexao.promise();
+        const [rows] = await db.query(`
+          SELECT d.*, t.nome as tipo_nome, s.nome as severidade_nome
+          FROM denuncias d
+          JOIN tipos_ocorrencia t ON d.tipo_id = t.id
+          JOIN severidades s ON d.severidade_id = s.id
+          ORDER BY d.created_at DESC
+        `);
+        sendJSON(res, 200, rows);
+        return;
+      }
 
-      
       if (pathname.startsWith("/api/painel/denuncias/") && req.method === "GET") {
         const denunciaId = pathname.split("/")[4];
 
@@ -702,7 +701,6 @@ const server = http.createServer(async (req, res) => {
         return;
       }
 
-
       if (pathname.startsWith("/api/timeline-publica/") && req.method === "GET") {
         const codigoRaw = pathname.split("/")[3];
         const codigo = decodeURIComponent(codigoRaw);
@@ -711,7 +709,6 @@ const server = http.createServer(async (req, res) => {
         const db = conexao.promise();
 
         try {
-
           const [denuncias] = await db.query(
             "SELECT id FROM denuncias WHERE codigo_anonimo = ?",
             [codigo]
@@ -733,21 +730,16 @@ const server = http.createServer(async (req, res) => {
       }
 
       if (pathname.startsWith("/api/timeline/") && req.method === "GET") {
-        console.log("Rota timeline acessada:", pathname);
-
         const user = verifyToken(req);
         if (!user) {
-          console.log("Usuário não autorizado");
           sendJSON(res, 401, { error: "Não autorizado" });
           return;
         }
 
         const denunciaId = pathname.split("/")[3];
-        console.log("Buscando timeline para denúncia ID:", denunciaId);
 
         try {
           const eventos = await Timeline.getByDenunciaId(denunciaId);
-          console.log("Eventos encontrados:", eventos.length);
           sendJSON(res, 200, eventos);
         } catch (error) {
           console.error("Erro ao buscar timeline:", error);
@@ -755,18 +747,6 @@ const server = http.createServer(async (req, res) => {
         }
         return;
       }
-
-      // if (pathname === "/api/confirmacoes/stats" && req.method === "POST") {
-      //   const data = await getRequestBody(req);
-      //   const { ocorrencia_ids } = data;
-      //   if (!Array.isArray(ocorrencia_ids)) {
-      //     sendJSON(res, 400, { error: "Lista de IDs inválida" });
-      //     return;
-      //   }
-      //   const stats = await Confirmacao.getEstatisticasMultiples(ocorrencia_ids);
-      //   sendJSON(res, 200, stats);
-      //   return;
-      // }
 
       if (pathname === "/api/confirmacoes/stats" && req.method === "POST") {
         const data = await getRequestBody(req);
@@ -776,7 +756,6 @@ const server = http.createServer(async (req, res) => {
           return;
         }
         const stats = await Confirmacao.getEstatisticasMultiples(ocorrencia_ids);
-        console.log("📊 Stats retornados:", stats);
         sendJSON(res, 200, stats);
         return;
       }
