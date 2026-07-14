@@ -102,19 +102,19 @@ const server = http.createServer(async (req, res) => {
         return;
       }
 
-          
+
       if (pathname.startsWith("/api/ocorrenciasdetalhes/") && req.method === "GET") {
         const ocorrenciaId = pathname.split("/")[3];
-        
-       
+
+
         if (pathname.includes("/confirmacoes")) {
-          
+
         } else {
           const conexao = require("./config/conexao");
           const db = conexao.promise();
 
           try {
-            
+
             const [rows] = await db.query(`
               SELECT 
                 o.id,
@@ -141,7 +141,7 @@ const server = http.createServer(async (req, res) => {
 
             const ocorrencia = rows[0];
 
-            
+
             const [statsRows] = await db.query(`
               SELECT 
                 SUM(CASE WHEN tipo_confirmacao = 'confirmou' THEN 1 ELSE 0 END) as confirmou,
@@ -152,7 +152,7 @@ const server = http.createServer(async (req, res) => {
 
             const stats = statsRows[0] || { confirmou: 0, falsa: 0 };
 
-           
+
             sendJSON(res, 200, {
               ...ocorrencia,
               estatisticas: {
@@ -674,6 +674,36 @@ const server = http.createServer(async (req, res) => {
         return;
       }
 
+
+      if (pathname.startsWith("/api/timeline-publica/") && req.method === "GET") {
+        const codigoRaw = pathname.split("/")[3];
+        const codigo = decodeURIComponent(codigoRaw);
+
+        const conexao = require("./config/conexao");
+        const db = conexao.promise();
+
+        try {
+
+          const [denuncias] = await db.query(
+            "SELECT id FROM denuncias WHERE codigo_anonimo = ?",
+            [codigo]
+          );
+
+          if (denuncias.length === 0) {
+            sendJSON(res, 404, { error: "Denúncia não encontrada" });
+            return;
+          }
+
+          const denunciaId = denuncias[0].id;
+          const eventos = await Timeline.getByDenunciaId(denunciaId);
+          sendJSON(res, 200, eventos);
+        } catch (error) {
+          console.error("Erro ao buscar timeline pública:", error);
+          sendJSON(res, 500, { error: "Erro ao buscar histórico", message: error.message });
+        }
+        return;
+      }
+
       if (pathname.startsWith("/api/timeline/") && req.method === "GET") {
         console.log("Rota timeline acessada:", pathname);
 
@@ -718,7 +748,7 @@ const server = http.createServer(async (req, res) => {
           return;
         }
         const stats = await Confirmacao.getEstatisticasMultiples(ocorrencia_ids);
-        console.log("📊 Stats retornados:", stats); 
+        console.log("📊 Stats retornados:", stats);
         sendJSON(res, 200, stats);
         return;
       }
