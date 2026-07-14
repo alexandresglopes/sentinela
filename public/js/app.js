@@ -712,25 +712,70 @@
   }
 
   async function renderMarkers(map) {
+    console.log("📍 Renderizando marcadores...");
     const DATA = window.SENTINELA_DATA;
-    if (!DATA) return;
+    if (!DATA) {
+      console.error("❌ SENTINELA_DATA não encontrado");
+      return;
+    }
+
+    // Remove marcadores antigos
     mapMarkers.forEach((m) => m.setMap(null));
     mapMarkers = [];
+
     const list = filteredOccurrences();
-    list.forEach((o) => {
-      const cor = DATA.severidades[o.severidade].cor;
+    console.log(`📊 Ocorrências filtradas: ${list.length} de ${DATA.ocorrencias.length} totais`);
+
+    if (list.length === 0) {
+      console.warn("️ Nenhuma ocorrência para mostrar (filtros podem estar vazios)");
+    }
+
+    list.forEach((o, index) => {
+      console.log(`Marcador ${index + 1}:`, o);
+
+      // Verifica se tem coordenadas válidas
+      if (!o.lat || !o.lng) {
+        console.warn(`❌ Ocorrência ${o.id} sem coordenadas válidas:`, o);
+        return;
+      }
+
+      const cor = DATA.severidades[o.severidade]?.cor || "#17b8a6";
+
       const marker = new google.maps.Marker({
-        position: { lat: o.lat, lng: o.lng },
+        position: { lat: parseFloat(o.lat), lng: parseFloat(o.lng) },
         map: map,
         title: o.titulo,
-        icon: { path: google.maps.SymbolPath.CIRCLE, scale: o.severidade === "alto" ? 13 : o.severidade === "medio" ? 10 : 8, fillColor: cor, fillOpacity: 0.35, strokeColor: cor, strokeWeight: 2 },
+        icon: {
+          path: google.maps.SymbolPath.CIRCLE,
+          scale: o.severidade === "alto" ? 13 : o.severidade === "medio" ? 10 : 8,
+          fillColor: cor,
+          fillOpacity: 0.85,
+          strokeColor: "#ffffff",
+          strokeWeight: 2,
+        },
       });
-      const infoWindow = new google.maps.InfoWindow({ content: `<div style="font-weight:bold;margin-bottom:4px;">${o.titulo}</div><div style="font-size:0.9rem;color:#666;">${o.bairro} · ${o.tempo}</div><p style="margin:8px 0;font-size:0.95rem;">${o.desc}</p>` });
-      marker.addListener("click", () => { infoWindow.open(map, marker); });
+
+      const infoWindow = new google.maps.InfoWindow({
+        content: `
+        <div style="font-weight:bold;margin-bottom:4px;">${o.titulo || "Ocorrência"}</div>
+        <div style="font-size:0.9rem;color:#666;">${o.bairro || "Local não informado"} · ${o.tempo || ""}</div>
+        <p style="margin:8px 0;font-size:0.95rem;">${o.desc || o.descricao || "Sem descrição"}</p>
+      `
+      });
+
+      marker.addListener("click", () => {
+        infoWindow.open(map, marker);
+      });
+
       marker._occId = o.id;
       mapMarkers.push(marker);
     });
+
+    console.log(`✅ ${mapMarkers.length} marcadores renderizados`);
+
     if ($("#stat-total")) $("#stat-total").textContent = list.length;
+    const alto = list.filter((o) => o.severidade === "alto").length;
+    if ($("#stat-alto")) $("#stat-alto").textContent = alto;
   }
 
   function initMapa() {
