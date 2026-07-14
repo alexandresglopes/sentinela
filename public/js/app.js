@@ -225,7 +225,7 @@
     <section class="page-head">
       <div class="container page-head__row">
         <div>
-          <h1 class="page-title">Acompanhar denúncia</h1>
+          <h1 class="page-title">Acompanhar denúncia.</h1>
           <p class="page-sub">Denúncia <strong>${codigo}</strong> · comunicação criptografada e anônima.</p>
         </div>
         <a href="#/acompanhar" class="btn btn--ghost btn--sm" data-nav>Trocar código</a>
