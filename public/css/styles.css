@@ -29,7 +29,7 @@
   --radius: 16px;
   --radius-sm: 10px;
   --radius-lg: 24px;
-  
+
   --card-bg: #1e293b;
   --bg-soft: #f8fafc;
 
@@ -62,7 +62,7 @@
   --ring: rgba(15, 159, 143, 0.35);
   --shadow: 0 20px 45px -22px rgba(16, 26, 46, 0.28);
   --shadow-sm: 0 8px 20px -14px rgba(16, 26, 46, 0.25);
-  
+
   --card-bg: #ffffff;
   --bg-soft: #f1f5f9;
 }
@@ -1685,6 +1685,11 @@ img {
   opacity: 0.7;
 }
 
+.btn-fechar-chat-inv {
+  color: var(--danger);
+  font-weight: bold;
+}
+
 .occ-item-stats {
   display: flex;
   gap: 10px;
@@ -2452,6 +2457,7 @@ img {
   color: var(--primary, #17b8a6);
   border-color: var(--primary, #17b8a6);
 }
+
 .btn-acao-detalhes:hover {
   background: rgba(23, 184, 166, 0.1);
 }
@@ -2461,6 +2467,7 @@ img {
   background: var(--primary, #17b8a6);
   border-color: var(--primary, #17b8a6);
 }
+
 .btn-acao-chat:hover {
   background: #14a393;
 }
@@ -2469,6 +2476,7 @@ img {
   color: var(--warning, #f4a63b);
   border-color: var(--warning, #f4a63b);
 }
+
 .btn-acao-historico:hover {
   background: rgba(244, 166, 59, 0.1);
 }
