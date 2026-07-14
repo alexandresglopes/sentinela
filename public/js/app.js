@@ -616,7 +616,7 @@
       <div class="modal-content" style="max-width: 600px; height: 500px; display: flex; flex-direction: column;">
         <div class="modal-header">
           <h3 class="modal-title">Chat com Denunciante <span style="font-size:0.8rem; color:var(--primary); margin-left:8px;">${codigo}</span></h3>
-          <button class="modal-close" id="btn-fechar-chat-inv" type="button">✕</button>
+          <button class="modal-close" id="btn-fechar-chat-inv" style="color:#ef5a63; font-weight: bold;" type="button">✕</button>
         </div>
         <div class="chat-investigador-container" style="flex: 1; display: flex; flex-direction: column;">
           <div class="chat-investigador-messages" id="chat-inv-messages">
@@ -648,7 +648,7 @@
     await carregarMensagensChatInvestigador();
   }
 
-  
+
   async function abrirModalChatInvestigador(denunciaId, codigo, token) {
     chatInvestigadorAtual = { id: Number(denunciaId), codigo: codigo };
 
@@ -657,7 +657,7 @@
       <div class="modal-content" style="max-width: 600px; height: 500px; display: flex; flex-direction: column;">
         <div class="modal-header">
           <h3 class="modal-title">Chat com Denunciante <span style="font-size:0.8rem; color:var(--primary); margin-left:8px;">${codigo}</span></h3>
-          <button class="modal-close" id="modal-chat-close-btn" type="button"></button>
+          <button class="modal-close" id="modal-chat-close-btn" style="color:#ef5a63; font-weight: bold;" type="button"></button>
         </div>
         <div class="chat-investigador-container" style="flex: 1; display: flex; flex-direction: column;">
           <div class="chat-investigador-messages" id="chat-inv-messages">
@@ -673,7 +673,7 @@
 
     document.body.insertAdjacentHTML("beforeend", modalHTML);
 
-    
+
     setTimeout(() => {
       const closeBtn = document.getElementById("modal-chat-close-btn");
       const sendBtn = document.getElementById("modal-chat-send-btn");
@@ -706,7 +706,7 @@
     await carregarMensagensChatInvestigador();
   }
 
-  
+
   window.enviarMensagemChatInvestigador = async function () {
     const input = document.getElementById("chat-inv-input");
     if (!input) return;
@@ -720,7 +720,7 @@
     const messagesDiv = document.getElementById("chat-inv-messages");
     if (!messagesDiv) return;
 
-    
+
     const div = document.createElement("div");
     div.className = "chat-msg-inv investigador";
     div.style.cssText = "align-self: flex-end; background: var(--primary); color: #fff; padding: 10px 14px; border-radius: 12px; max-width: 80%; margin-bottom: 12px; border-bottom-right-radius: 4px;";
@@ -730,7 +730,7 @@
 
     input.value = "";
 
-    
+
     try {
       const response = await fetch("/api/chat-mensagem", {
         method: "POST",
@@ -748,7 +748,7 @@
     } catch (err) {
       console.error("Erro ao enviar mensagem:", err);
       showToast("Erro ao enviar mensagem. Tente novamente.");
-      
+
       if (div.parentNode) div.parentNode.removeChild(div);
     }
   };
