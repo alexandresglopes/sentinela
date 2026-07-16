@@ -61,7 +61,7 @@ function verifyToken(req) {
   try {
     const JWT_SECRET = process.env.SESSION_SECRET;
     return jwt.verify(token, JWT_SECRET);
-    // eslint-disable-next-line no-unused-vars
+    
   } catch (err) {
     return null;
   }
@@ -107,7 +107,7 @@ const server = http.createServer(async (req, res) => {
         const ocorrenciaId = pathname.split("/")[3];
 
         if (pathname.includes("/confirmacoes")) {
-          // Ignora, deixa passar para outras rotas se necessário
+          
         } else {
           const conexao = require("./config/conexao");
           const db = conexao.promise();
@@ -360,7 +360,7 @@ const server = http.createServer(async (req, res) => {
         return;
       }
 
-      // ✅ ROTA DESCOMENTADA E CORRIGIDA: Busca a lista de denúncias para o painel
+      
       if (pathname === "/api/painel/denuncias" && req.method === "GET") {
         const user = verifyToken(req);
         if (!user) {

@@ -17,12 +17,32 @@
   const activeFilters = { sev: new Set(["alto", "medio", "baixo"]), tipo: new Set() };
   let chatInvestigadorAtual = { id: null, codigo: null };
 
+
+
   async function carregarGoogleMaps() {
-    if (googleMapsCarregado || googleMapsCarregando) return;
+    if (googleMapsCarregado) return;
+
     
-    if (window.google && window.google.maps && window.google.maps.Map) {
-      googleMapsReady = true;
-      googleMapsCarregado = true;
+    if (document.getElementById("google-maps-script")) {
+      console.log("⏳ Script do Google Maps já existe, aguardando inicialização...");
+      googleMapsCarregando = true;
+
+      
+      let attempts = 0;
+      const checkReady = setInterval(() => {
+        attempts++;
+        if (window.google && window.google.maps && window.google.maps.Map) {
+          clearInterval(checkReady);
+          googleMapsReady = true;
+          googleMapsCarregado = true;
+          googleMapsCarregando = false;
+          console.log("✅ Google Maps pronto (do cache)");
+          if (parseHash().path === "mapa") setTimeout(initMapa, 100);
+        } else if (attempts > 20) {
+          clearInterval(checkReady);
+          console.error("❌ Timeout aguardando Google Maps");
+        }
+      }, 200);
       return;
     }
 
@@ -43,7 +63,6 @@
         googleMapsCarregado = true;
         googleMapsCarregando = false;
         console.log("✅ Google Maps carregado com sucesso");
-        
         if (parseHash().path === "mapa") {
           setTimeout(initMapa, 100);
         }
@@ -681,10 +700,40 @@
     return tokenUsuario;
   }
 
+
+
+  async function carregarEstatisticasConfirmacoes(ids) {
+    if (!ids || ids.length === 0) return {};
+
+    try {
+      const res = await fetch("/api/confirmacoes/stats", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ocorrencia_ids: ids })
+      });
+
+      if (res.ok) {
+        const stats = await res.json();
+        Object.assign(estatisticasConfirmacoes, stats);
+        return stats;
+      }
+    } catch (err) {
+      console.error("Erro ao carregar estatísticas:", err);
+    }
+    return {};
+  }
+
   function filteredOccurrences() {
     const DATA = window.SENTINELA_DATA;
     if (!DATA) return [];
-    return DATA.ocorrencias.filter((o) => activeFilters.sev.has(o.severidade) && activeFilters.tipo.has(o.tipo));
+
+    return DATA.ocorrencias.filter((o) => {
+      const sevMatch = activeFilters.sev.has(o.severidade);
+
+      const tipoMatch = activeFilters.tipo.size === 0 || activeFilters.tipo.has(String(o.tipo));
+
+      return sevMatch && tipoMatch;
+    });
   }
 
   async function renderMarkers(map) {
@@ -694,76 +743,481 @@
       console.error("❌ SENTINELA_DATA não encontrado");
       return;
     }
+
     
     mapMarkers.forEach((m) => m.setMap(null));
     mapMarkers = [];
-    
+
     const list = filteredOccurrences();
     console.log(`📊 Ocorrências filtradas: ${list.length} de ${DATA.ocorrencias.length} totais`);
+
     
-    if (list.length === 0) {
-      console.warn("⚠️ Nenhuma ocorrência para mostrar");
-    }
-    
+    const ids = list.map(o => o.id);
+    await carregarEstatisticasConfirmacoes(ids);
+
     list.forEach((o, index) => {
-      console.log(`Marcador ${index + 1}:`, o);
-      
       if (!o.lat || !o.lng) {
         console.warn(`⚠️ Ocorrência ${index} sem coordenadas:`, o);
         return;
       }
+
       
-      const cor = DATA.severidades[o.severidade]?.cor || "#17b8a6";
+      const severidadeKey = String(o.severidade).toLowerCase();
+
       
+      const severidadeData = DATA.severidades[severidadeKey];
+      // const cor = severidadeData?.cor || (
+      //   severidadeKey === 'alto' ? '#ef5a63' :
+      //     severidadeKey === 'medio' ? '#f4a63b' : '#17b8a6'
+      // );
+      var cor;
+      if (severidadeKey == 'alto') {
+        cor = '#ef5a63';
+      } else if (severidadeKey == 'medio') {
+        cor = '#f4a63b';
+      } else if (severidadeKey == 'baixo') {
+        cor = '#17b8a6';
+      }
+
+      
+      //const scale = severidadeKey === 'alto' ? 13 : severidadeKey === 'medio' ? 10 : 8;
+      var scale;
+      if (severidadeKey == 'alto') {
+        scale = 13;
+      } else if (severidadeKey == 'medio') {
+        scale = 10;
+      } else if (severidadeKey == 'baixo') {
+        scale = 8;
+      }
+
+      //console.log(`Marcador ${index}: ${o.titulo} | Descrição: ${o.desc} | Severidade: ${severidadeKey} | Cor: ${cor}`);
+
       const marker = new google.maps.Marker({
         position: { lat: parseFloat(o.lat), lng: parseFloat(o.lng) },
         map: map,
         title: o.titulo,
         icon: {
           path: google.maps.SymbolPath.CIRCLE,
-          scale: o.severidade === "alto" ? 13 : o.severidade === "medio" ? 10 : 8,
+          scale: scale,
           fillColor: cor,
           fillOpacity: 0.85,
           strokeColor: "#ffffff",
           strokeWeight: 2,
         },
       });
+
       
+      const stats = estatisticasConfirmacoes[o.id] || { confirmou: 0, falsa: 0 };
+
+      const severidadeNome = severidadeData?.nome || (
+        severidadeKey === 'alto' ? 'Alto' :
+          severidadeKey === 'medio' ? 'Médio' : 'Baixo'
+      );
+
+      const infoWindowContent = `
+        <div style="min-width: 280px; font-family: 'Inter', sans-serif;">
+          <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+            <span style="display: inline-block; padding: 4px 10px; background: ${cor}20; color: ${cor}; border-radius: 12px; font-size: 0.75rem; font-weight: 700; text-transform: uppercase;">
+              ${severidadeNome}
+            </span>
+          </div>
+          
+          <div style="font-weight: 700; margin-bottom: 6px; color: #101a2e; font-size: 15px;">${o.titulo || "Ocorrência"}</div>
+          <div style="font-size: 0.85rem; color: #64748b; margin-bottom: 10px;">📍 ${o.bairro || "Local não informado"} · ${o.tempo || ""}</div>
+          <div style="font-size: 0.9rem; color: #334155; margin-bottom: 12px; line-height: 1.5;">${o.desc || o.descricao || "Sem descrição"}</div>
+          
+          <div style="display: flex; gap: 12px; margin: 12px 0; padding: 12px; background: #f8fafc; border-radius: 8px;">
+            <div style="flex: 1; text-align: center; padding: 8px; background: rgba(23, 184, 166, 0.1); border-radius: 6px;">
+              <div style="display: flex; align-items: center; justify-content: center; gap: 6px; margin-bottom: 4px;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#17b8a6" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M20 6 9 17l-5-5"/>
+                </svg>
+                <span style="font-size: 1.2rem; font-weight: 700; color: #17b8a6;">${stats.confirmou}</span>
+              </div>
+              <div style="font-size: 0.75rem; color: #64748b; font-weight: 500;">confirmaram</div>
+            </div>
+            
+            <div style="flex: 1; text-align: center; padding: 8px; background: rgba(239, 90, 99, 0.1); border-radius: 6px;">
+              <div style="display: flex; align-items: center; justify-content: center; gap: 6px; margin-bottom: 4px;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ef5a63" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M18 6 6 18M6 6l12 12"/>
+                </svg>
+                <span style="font-size: 1.2rem; font-weight: 700; color: #ef5a63;">${stats.falsa}</span>
+              </div>
+              <div style="font-size: 0.75rem; color: #64748b; font-weight: 500;">reportaram</div>
+            </div>
+          </div>
+          
+          <div style="display: flex; gap: 8px; margin-top: 12px; padding-top: 12px; border-top: 1px solid #e2e8f0;">
+            <button onclick="confirmarOcorrencia(${o.id}, 'confirmou')" 
+                    style="flex: 1; padding: 8px 12px; background: #17b8a6; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.85rem; display: flex; align-items: center; justify-content: center; gap: 4px;">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6 9 17l-5-5"/></svg>
+              Confirmar
+            </button>
+            <button onclick="confirmarOcorrencia(${o.id}, 'falsa')" 
+                    style="flex: 1; padding: 8px 12px; background: #ef5a63; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.85rem; display: flex; align-items: center; justify-content: center; gap: 4px;">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6 6 18M6 6l12 12"/></svg>
+              Falsa
+            </button>
+          </div>
+        </div>
+      `;
+
       const infoWindow = new google.maps.InfoWindow({
-        content: `
-          <div style="font-weight:bold;margin-bottom:4px;">${o.titulo || "Ocorrência"}</div>
-          <div style="font-size:0.9rem;color:#666;">${o.bairro || "Local não informado"} · ${o.tempo || ""}</div>
-          <p style="margin:8px 0;font-size:0.95rem;">${o.desc || o.descricao || "Sem descrição"}</p>
-        `
+        content: infoWindowContent
       });
-      
+
       marker.addListener("click", () => {
         infoWindow.open(map, marker);
       });
-      
+
       marker._occId = o.id;
       mapMarkers.push(marker);
     });
-    
+
     console.log(`✅ ${mapMarkers.length} marcadores renderizados`);
-    
+
     if ($("#stat-total")) $("#stat-total").textContent = list.length;
-    const alto = list.filter((o) => o.severidade === "alto").length;
+    const alto = list.filter((o) => String(o.severidade).toLowerCase() === 'alto').length;
     if ($("#stat-alto")) $("#stat-alto").textContent = alto;
-    
+
     renderOccList(list, map);
+  }
+
+  function toggleHeatmap(map) {
+    heatmapAtivo = !heatmapAtivo;
+    const btn = $("#btn-heatmap");
+
+    if (heatmapAtivo) {
+      
+      if (btn) {
+        btn.classList.add("is-active");
+        btn.innerHTML = `${icon("chart", 18)} Desativar mapa de calor`;
+      }
+
+      
+      mapMarkers.forEach((m) => m.setMap(null));
+
+      
+      const DATA = window.SENTINELA_DATA;
+      if (!DATA) return;
+
+      const list = filteredOccurrences();
+
+      
+      const heatmapData = list.map(o => {
+        
+        let weight = 1;
+        if (o.severidade === 'alto') weight = 3;
+        else if (o.severidade === 'medio') weight = 2;
+        else if (o.severidade === 'baixo') weight = 1;
+
+        return {
+          location: new google.maps.LatLng(parseFloat(o.lat), parseFloat(o.lng)),
+          weight: weight
+        };
+      });
+
+      
+      heatmapLayer = new google.maps.visualization.HeatmapLayer({
+        data: heatmapData,
+        map: map,
+        radius: 30,
+        opacity: 0.6,
+        dissipating: true,
+        gradient: [
+          'rgba(23, 184, 166, 0.4)',    // Verde (baixo)
+          'rgba(244, 166, 59, 0.5)',    // Laranja (médio)
+          'rgba(239, 90, 99, 0.6)',     // Vermelho (alto)
+          'rgba(239, 90, 99, 0.8)'      // Vermelho intenso
+        ]
+
+      });
+
+      showToast("🔥 Mapa de calor ativado");
+
+    } else {
+      
+      if (heatmapLayer) {
+        heatmapLayer.setMap(null);
+        heatmapLayer = null;
+      }
+
+      if (btn) {
+        btn.classList.remove("is-active");
+        btn.innerHTML = `${icon("chart", 18)} Mapa de calor`;
+      }
+
+      
+      renderMarkers(map);
+
+      showToast("🗺️ Mapa de calor desativado");
+    }
+  }
+
+  async function carregarEstatisticasConfirmacoes(ids) {
+    if (!ids || ids.length === 0) return {};
+
+    try {
+      const res = await fetch("/api/confirmacoes/stats", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ocorrencia_ids: ids })
+      });
+
+      if (res.ok) {
+        const stats = await res.json();
+        Object.assign(estatisticasConfirmacoes, stats);
+        return stats;
+      }
+    } catch (err) {
+      console.error("Erro ao carregar estatísticas:", err);
+    }
+    return {};
+  }
+
+
+  window.confirmarOcorrencia = async function (ocorrenciaId, tipo) {
+    const token = getTokenUsuario();
+
+    try {
+      const res = await fetch("/api/confirmacoes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ocorrencia_id: ocorrenciaId,
+          tipo_confirmacao: tipo,
+          token_usuario: token
+        })
+      });
+
+      const data = await res.json();
+
+      if (res.ok) {
+        showToast(tipo === 'confirmou' ? "✅ Ocorrência confirmada!" : "🚫 Ocorrência reportada como falsa");
+
+        if (window.__sentinelaMap) {
+          renderMarkers(window.__sentinelaMap);
+        }
+      } else {
+        showToast(data.error || "Erro ao registrar confirmação");
+      }
+    } catch (err) {
+      console.error("Erro ao confirmar ocorrência:", err);
+      showToast("Erro de conexão");
+    }
+  };
+
+  let marcadorTemporario = null;
+  let coordenadasSelecionadas = null;
+
+  function abrirModalRegistro(lat, lng) {
+
+    const modalExistente = document.getElementById("modal-overlay");
+    if (modalExistente) {
+      modalExistente.remove();
+    }
+
+    const DATA = window.SENTINELA_DATA;
+    if (!DATA) {
+      showToast("Dados não carregados");
+      return;
+    }
+
+    const tipoOpts = DATA.tipos.map((t) => `<option value="${t.id}">${t.nome}</option>`).join("");
+
+    const modalHTML = `
+      <div class="modal-overlay" id="modal-overlay">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h3 class="modal-title">${icon("pin", 20)} Registrar nova ocorrência</h3>
+            <button class="modal-close" id="modal-close" type="button" aria-label="Fechar">
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                <path d="M18 6 6 18M6 6l12 12"/>
+              </svg>
+            </button>
+          </div>
+
+          <div class="modal-body">
+            <p class="modal-info">
+              ${icon("map", 16)} Local: <strong>${lat.toFixed(5)}, ${lng.toFixed(5)}</strong>
+            </p>
+
+            <div class="field">
+              <label for="modal-tipo">Tipo de ocorrência *</label>
+              <select class="select" id="modal-tipo" required>
+                <option value="" disabled selected>Selecione o tipo</option>
+                ${tipoOpts}
+              </select>
+            </div>
+
+            <div class="field">
+              <label>Severidade *</label>
+              <div class="severity-options">
+                <label class="severity-opt">
+                  <input type="radio" name="modal-sev" value="baixo">
+                  <strong>Baixo</strong>
+                  <span>Sem urgência</span>
+                </label>
+                <label class="severity-opt">
+                  <input type="radio" name="modal-sev" value="medio" checked>
+                  <strong>Médio</strong>
+                  <span>Requer atenção</span>
+                </label>
+                <label class="severity-opt">
+                  <input type="radio" name="modal-sev" value="alto">
+                  <strong>Alto</strong>
+                  <span>Urgente</span>
+                </label>
+              </div>
+            </div>
+
+            <div class="field">
+              <label for="modal-bairro">Bairro / região *</label>
+              <input class="input" id="modal-bairro" type="text" placeholder="Ex.: Bela Vista" required />
+            </div>
+
+            <div class="field">
+              <label for="modal-desc">Descrição *</label>
+              <textarea class="textarea" id="modal-desc" rows="3" placeholder="Descreva o que aconteceu..." required></textarea>
+            </div>
+          </div>
+
+          <div class="modal-footer">
+            <button class="btn btn--ghost" id="modal-cancelar" type="button">Cancelar</button>
+            <button class="btn btn--primary" id="modal-confirmar" type="button">
+              ${icon("check", 18)} Registrar ocorrência
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
+
+    document.body.insertAdjacentHTML("beforeend", modalHTML);
+
+
+    setTimeout(() => {
+      const modalClose = $("#modal-close");
+      const modalCancelar = $("#modal-cancelar");
+      const modalOverlay = $("#modal-overlay");
+      const modalConfirmar = $("#modal-confirmar");
+
+      if (modalClose) modalClose.addEventListener("click", fecharModalRegistro);
+      if (modalCancelar) modalCancelar.addEventListener("click", fecharModalRegistro);
+      if (modalOverlay) {
+        modalOverlay.addEventListener("click", (e) => {
+          if (e.target.id === "modal-overlay") fecharModalRegistro();
+        });
+      }
+      if (modalConfirmar) modalConfirmar.addEventListener("click", () => confirmarRegistroOcorrencia(lat, lng));
+    }, 100);
+  }
+
+  function fecharModalRegistro() {
+    const modal = $("#modal-overlay");
+    if (modal) {
+      modal.classList.add("modal-closing");
+      setTimeout(() => {
+        if (modal.parentNode) modal.remove();
+      }, 200);
+    }
+
+
+    if (marcadorTemporario) {
+      marcadorTemporario.setMap(null);
+      marcadorTemporario = null;
+    }
+    coordenadasSelecionadas = null;
+  }
+
+  async function confirmarRegistroOcorrencia(lat, lng) {
+    const DATA = window.SENTINELA_DATA;
+    if (!DATA) {
+      showToast("Dados não carregados");
+      return;
+    }
+
+    const tipoSelect = $("#modal-tipo");
+    const tipoId = tipoSelect?.value;
+    const bairro = $("#modal-bairro")?.value.trim();
+    const desc = $("#modal-desc")?.value.trim();
+    const sevRadio = document.querySelector('input[name="modal-sev"]:checked');
+    const severidade = sevRadio?.value || "medio";
+
+    if (!tipoId) {
+      showToast("Selecione o tipo de ocorrência.");
+      if (tipoSelect) tipoSelect.focus();
+      return;
+    }
+    if (!bairro) {
+      showToast("Informe o bairro/região.");
+      const bairroInput = $("#modal-bairro");
+      if (bairroInput) bairroInput.focus();
+      return;
+    }
+    if (!desc) {
+      showToast("Adicione uma descrição.");
+      const descInput = $("#modal-desc");
+      if (descInput) descInput.focus();
+      return;
+    }
+
+    const btnConfirmar = $("#modal-confirmar");
+    if (btnConfirmar) {
+      btnConfirmar.disabled = true;
+      btnConfirmar.innerHTML = `${icon("pin", 18)} Salvando...`;
+    }
+
+    try {
+      const response = await fetch("/api/ocorrencias", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          tipo_id: Number(tipoId),
+          severidade_id: severidade,
+          titulo: `${DATA.tipos.find(t => t.id === Number(tipoId))?.nome || "Ocorrência"} registrada`,
+          bairro: bairro,
+          tempo: "agora",
+          lat: lat,
+          lng: lng,
+          descricao: desc,
+        }),
+      });
+
+      const responseData = await response.json();
+
+      if (!response.ok) {
+        throw new Error(responseData.error || "Erro ao registrar ocorrência");
+      }
+
+      showToast("✅ Ocorrência registrada com sucesso!");
+      fecharModalRegistro();
+
+
+      setTimeout(() => {
+        window.location.reload();
+      }, 1500);
+
+    } catch (error) {
+      console.error("Erro ao registrar ocorrência:", error);
+      showToast("Erro ao registrar: " + error.message);
+      if (btnConfirmar) {
+        btnConfirmar.disabled = false;
+        btnConfirmar.innerHTML = `${icon("check", 18)} Registrar ocorrência`;
+      }
+    }
   }
 
   function renderOccList(list, map) {
     const DATA = window.SENTINELA_DATA;
     const el = $("#occ-list");
     if (!el || !DATA) return;
-    
+
     if (!list.length) {
       el.innerHTML = `<p class="card__desc">Nenhuma ocorrência com os filtros atuais.</p>`;
       return;
     }
-    
+
     el.innerHTML = list
       .slice(0, 6)
       .map((o) => {
@@ -793,41 +1247,53 @@
   }
 
   function initMapa() {
-    console.log("️ Iniciando mapa...");
+    console.log("🗺️ Iniciando mapa...");
     const DATA = window.SENTINELA_DATA;
     if (!DATA) {
-      console.error("❌ Dados não carregados");
+      console.error(" Dados não carregados");
       setTimeout(initMapa, 500);
       return;
     }
-    
+
+
+    if (DATA.tipos && activeFilters.tipo.size === 0) {
+      activeFilters.tipo = new Set(DATA.tipos.map(t => String(t.id)));
+      console.log("✅ Filtros de tipo inicializados:", Array.from(activeFilters.tipo));
+    }
+
     if (!googleMapsReady) {
       console.log("⏳ Google Maps não está pronto...");
       setTimeout(initMapa, 500);
       return;
     }
-    
+
     const mapElement = document.getElementById("map");
     if (!mapElement) {
       console.error(" Elemento #map não encontrado");
       setTimeout(initMapa, 500);
       return;
     }
-    
+
+
     if (window.__sentinelaMap) {
-      console.log("ℹ️ Mapa já inicializado");
+      console.log("️ Mapa já existe, atualizando marcadores...");
+      renderMarkers(window.__sentinelaMap);
       return;
     }
 
-    console.log("📍 Criando mapa em:", DATA.center);
+    console.log(" Criando mapa em:", DATA.center);
     const map = new google.maps.Map(mapElement, {
       center: { lat: DATA.center[0], lng: DATA.center[1] },
       zoom: DATA.zoom
     });
     window.__sentinelaMap = map;
     console.log("✅ Mapa criado com sucesso!");
-    
-    renderMarkers(map);
+
+
+    setTimeout(() => {
+      renderMarkers(map);
+    }, 100);
+
 
     $$("#filtro-severidade .chip").forEach((chip) => {
       chip.addEventListener("click", () => {
@@ -838,26 +1304,91 @@
       });
     });
 
-    $("#btn-heatmap")?.addEventListener("click", () => {
-      toggleHeatmap(map);
+
+    $$("#filtro-tipo .chip").forEach((chip) => {
+      chip.addEventListener("click", () => {
+        const t = chip.dataset.tipo;
+        chip.classList.toggle("is-active");
+        chip.classList.contains("is-active") ? activeFilters.tipo.add(t) : activeFilters.tipo.delete(t);
+        renderMarkers(map);
+      });
     });
 
-    $("#btn-registrar")?.addEventListener("click", () => {
-      showToast("Funcionalidade de registro em desenvolvimento");
-    });
-  }
 
-  function toggleHeatmap(map) {
-    heatmapAtivo = !heatmapAtivo;
-    const btn = $("#btn-heatmap");
     
-    if (heatmapAtivo) {
-      btn?.classList.add("is-active");
-      showToast("Mapa de calor ativado");
-    } else {
-      btn?.classList.remove("is-active");
-      showToast("Mapa de calor desativado");
-    }
+    $("#btn-heatmap")?.addEventListener("click", () => {
+      if (window.__sentinelaMap) {
+        toggleHeatmap(window.__sentinelaMap);
+      }
+    });
+
+
+    let modoRegistro = false;
+    $("#btn-registrar")?.addEventListener("click", () => {
+      modoRegistro = !modoRegistro;
+
+      if (modoRegistro) {
+
+        $("#btn-registrar").classList.remove("btn--primary");
+        $("#btn-registrar").classList.add("btn--soft");
+        $("#btn-registrar").innerHTML = `${icon("pin", 18)} Clique no mapa para selecionar o local`;
+        map.getDiv().style.cursor = "crosshair";
+        showToast("Clique no mapa para selecionar o local da ocorrência");
+      } else {
+
+        $("#btn-registrar").classList.add("btn--primary");
+        $("#btn-registrar").classList.remove("btn--soft");
+        $("#btn-registrar").innerHTML = `${icon("pin", 18)} Registrar ocorrência`;
+        map.getDiv().style.cursor = "";
+
+
+        if (marcadorTemporario) {
+          marcadorTemporario.setMap(null);
+          marcadorTemporario = null;
+        }
+        coordenadasSelecionadas = null;
+      }
+    });
+
+
+    map.addListener("click", (e) => {
+      if (!modoRegistro) return;
+
+
+      const lat = e.latLng.lat();
+      const lng = e.latLng.lng();
+
+
+      if (marcadorTemporario) {
+        marcadorTemporario.setMap(null);
+      }
+
+
+      coordenadasSelecionadas = { lat, lng };
+      marcadorTemporario = new google.maps.Marker({
+        position: { lat, lng },
+        map: map,
+        icon: {
+          path: google.maps.SymbolPath.CIRCLE,
+          scale: 12,
+          fillColor: "#3b82f6",
+          fillOpacity: 0.6,
+          strokeColor: "#1d4ed8",
+          strokeWeight: 2,
+        },
+        title: "Local selecionado",
+      });
+
+
+      abrirModalRegistro(lat, lng);
+
+
+      modoRegistro = false;
+      $("#btn-registrar").classList.add("btn--primary");
+      $("#btn-registrar").classList.remove("btn--soft");
+      $("#btn-registrar").innerHTML = `${icon("pin", 18)} Registrar ocorrência`;
+      map.getDiv().style.cursor = "";
+    });
   }
 
   function initDenuncia() {
@@ -1204,9 +1735,9 @@
           <div style="margin-bottom: 16px;"><strong style="color: var(--text-muted); font-size: 0.9rem;">Bairro:</strong><div>${data.bairro}</div></div>
           <div style="margin-bottom: 16px;"><strong style="color: var(--text-muted); font-size: 0.9rem;">Status:</strong><div><span class="mini-badge badge--${data.status === 'aberta' ? 'baixo' : data.status === 'em_analise' ? 'medio' : 'alto'}">${data.status}</span></div></div>
           <div style="margin-bottom: 16px;"><strong style="color: var(--text-muted); font-size: 0.9rem;">Quando ocorreu:</strong><div>${data.quando_ocorreu ? new Date(data.quando_ocorreu).toLocaleString('pt-BR') : 'Não informado'}</div></div>
-          <div style="margin-top: 24px; padding: 16px; background: var(--bg-soft); border-radius: 8px;">
+          <div style="margin-top: 24px; padding: 16px; border-radius: 8px;">
             <strong style="color: var(--text-muted); font-size: 0.9rem; display: block; margin-bottom: 8px;">Descrição:</strong>
-            <div style="color: var(--text); line-height: 1.6;">${data.descricao || 'Sem descrição'}</div>
+            <div style="color: var(--text-muted); line-height: 1.6;">${data.descricao || 'Sem descrição'}</div>
           </div>
         </div>`;
     } catch (err) {
@@ -1347,8 +1878,8 @@
       <div class="modal-overlay" id="modal-timeline-overlay" style="display:flex; z-index: 2000;">
         <div class="modal-content modal-timeline" style="max-width: 600px;">
           <div class="modal-header">
-            <h3 class="modal-title">${icon("clock", 20)} Linha do Tempo</h3>
-            <button class="modal-close" id="modal-timeline-close" type="button" aria-label="Fechar"></button>
+            <h3 class="modal-title">${icon("clock", 20)} Linha do Tempo</h3>            
+            <button class="modal-close" id="modal-timeline-close" type="button" aria-label="Fechar">X</button-->
           </div>
           <div class="modal-body" id="timeline-body" style="padding: 20px; max-height: 400px; overflow-y: auto;">
             <p style="text-align: center; color: var(--text-muted);">Carregando histórico...</p>
@@ -1506,6 +2037,7 @@
     });
   }
 
+ 
   function render() {
     const { path, params } = parseHash();
     let html = "";
@@ -1538,6 +2070,11 @@
       if (path === "login") initLogin();
       if (path === "painel") initPainel();
 
+      
+      if (path === "inicio") {
+        setTimeout(() => { initAlertasTempoReal(); }, 100);
+      }
+
       if (path === "dashboard") {
         setTimeout(() => { initDashboard(); }, 300);
       }
@@ -1554,6 +2091,43 @@
     document.body.insertAdjacentHTML("beforeend", btnHTML);
 
     document.getElementById("btn-emergencia-flutuante").addEventListener("click", abrirModalEmergencia);
+  }
+
+  function initAlertasTempoReal() {
+    const alertas = $$(".mini-row--clickable");
+
+    alertas.forEach((alerta) => {
+      alerta.addEventListener("click", () => {
+        const ocorrenciaId = Number(alerta.dataset.ocorrencia);
+
+       
+        window.location.hash = "#/mapa";
+
+       
+        setTimeout(() => {
+          const DATA = window.SENTINELA_DATA;
+          const map = window.__sentinelaMap;
+
+          if (map && DATA) {
+            const ocorrencia = DATA.ocorrencias.find((o) => o.id === ocorrenciaId);
+
+            if (ocorrencia) {
+             
+              map.panTo({ lat: ocorrencia.lat, lng: ocorrencia.lng });
+              map.setZoom(16);
+
+             
+              const marker = mapMarkers.find((m) => m._occId === ocorrenciaId);
+              if (marker) {
+                setTimeout(() => {
+                  google.maps.event.trigger(marker, "click");
+                }, 300);
+              }
+            }
+          }
+        }, 300);
+      });
+    });
   }
 
   function init() {
