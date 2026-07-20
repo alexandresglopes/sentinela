@@ -22,12 +22,12 @@
   async function carregarGoogleMaps() {
     if (googleMapsCarregado) return;
 
-    
+
     if (document.getElementById("google-maps-script")) {
       console.log("⏳ Script do Google Maps já existe, aguardando inicialização...");
       googleMapsCarregando = true;
 
-      
+
       let attempts = 0;
       const checkReady = setInterval(() => {
         attempts++;
@@ -261,6 +261,11 @@
           <div class="map-wrap">
             <div id="map" role="application" aria-label="Mapa de ocorrências"></div>
             <div class="map-controls">
+              <button class="map-control-btn" id="btn-mylocation" type="button" title="Minha localização">
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/></svg>
+                Minha localização
+              </button>
+              
               <button class="map-control-btn" id="btn-heatmap" type="button" title="Ativar mapa de calor">
                 <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg>
                 Mapa de calor
@@ -744,14 +749,14 @@
       return;
     }
 
-    
+
     mapMarkers.forEach((m) => m.setMap(null));
     mapMarkers = [];
 
     const list = filteredOccurrences();
     console.log(`📊 Ocorrências filtradas: ${list.length} de ${DATA.ocorrencias.length} totais`);
 
-    
+
     const ids = list.map(o => o.id);
     await carregarEstatisticasConfirmacoes(ids);
 
@@ -761,10 +766,10 @@
         return;
       }
 
-      
+
       const severidadeKey = String(o.severidade).toLowerCase();
 
-      
+
       const severidadeData = DATA.severidades[severidadeKey];
       // const cor = severidadeData?.cor || (
       //   severidadeKey === 'alto' ? '#ef5a63' :
@@ -779,7 +784,7 @@
         cor = '#17b8a6';
       }
 
-      
+
       //const scale = severidadeKey === 'alto' ? 13 : severidadeKey === 'medio' ? 10 : 8;
       var scale;
       if (severidadeKey == 'alto') {
@@ -806,7 +811,7 @@
         },
       });
 
-      
+
       const stats = estatisticasConfirmacoes[o.id] || { confirmou: 0, falsa: 0 };
 
       const severidadeNome = severidadeData?.nome || (
@@ -889,24 +894,24 @@
     const btn = $("#btn-heatmap");
 
     if (heatmapAtivo) {
-      
+
       if (btn) {
         btn.classList.add("is-active");
         btn.innerHTML = `${icon("chart", 18)} Desativar mapa de calor`;
       }
 
-      
+
       mapMarkers.forEach((m) => m.setMap(null));
 
-      
+
       const DATA = window.SENTINELA_DATA;
       if (!DATA) return;
 
       const list = filteredOccurrences();
 
-      
+
       const heatmapData = list.map(o => {
-        
+
         let weight = 1;
         if (o.severidade === 'alto') weight = 3;
         else if (o.severidade === 'medio') weight = 2;
@@ -918,7 +923,7 @@
         };
       });
 
-      
+
       heatmapLayer = new google.maps.visualization.HeatmapLayer({
         data: heatmapData,
         map: map,
@@ -937,7 +942,7 @@
       showToast("🔥 Mapa de calor ativado");
 
     } else {
-      
+
       if (heatmapLayer) {
         heatmapLayer.setMap(null);
         heatmapLayer = null;
@@ -948,7 +953,7 @@
         btn.innerHTML = `${icon("chart", 18)} Mapa de calor`;
       }
 
-      
+
       renderMarkers(map);
 
       showToast("🗺️ Mapa de calor desativado");
@@ -1246,15 +1251,159 @@
     });
   }
 
+  // function initMapa() {
+  //   console.log("🗺️ Iniciando mapa...");
+  //   const DATA = window.SENTINELA_DATA;
+  //   if (!DATA) {
+  //     console.error(" Dados não carregados");
+  //     setTimeout(initMapa, 500);
+  //     return;
+  //   }
+
+
+  //   if (DATA.tipos && activeFilters.tipo.size === 0) {
+  //     activeFilters.tipo = new Set(DATA.tipos.map(t => String(t.id)));
+  //     console.log("✅ Filtros de tipo inicializados:", Array.from(activeFilters.tipo));
+  //   }
+
+  //   if (!googleMapsReady) {
+  //     console.log("⏳ Google Maps não está pronto...");
+  //     setTimeout(initMapa, 500);
+  //     return;
+  //   }
+
+  //   const mapElement = document.getElementById("map");
+  //   if (!mapElement) {
+  //     console.error(" Elemento #map não encontrado");
+  //     setTimeout(initMapa, 500);
+  //     return;
+  //   }
+
+
+  //   if (window.__sentinelaMap) {
+  //     console.log("️ Mapa já existe, atualizando marcadores...");
+  //     renderMarkers(window.__sentinelaMap);
+  //     return;
+  //   }
+
+  //   console.log(" Criando mapa em:", DATA.center);
+  //   const map = new google.maps.Map(mapElement, {
+  //     center: { lat: DATA.center[0], lng: DATA.center[1] },
+  //     zoom: DATA.zoom
+  //   });
+  //   window.__sentinelaMap = map;
+  //   console.log("✅ Mapa criado com sucesso!");
+
+
+  //   setTimeout(() => {
+  //     renderMarkers(map);
+  //   }, 100);
+
+
+  //   $$("#filtro-severidade .chip").forEach((chip) => {
+  //     chip.addEventListener("click", () => {
+  //       const s = chip.dataset.sev;
+  //       chip.classList.toggle("is-active");
+  //       chip.classList.contains("is-active") ? activeFilters.sev.add(s) : activeFilters.sev.delete(s);
+  //       renderMarkers(map);
+  //     });
+  //   });
+
+
+  //   $$("#filtro-tipo .chip").forEach((chip) => {
+  //     chip.addEventListener("click", () => {
+  //       const t = chip.dataset.tipo;
+  //       chip.classList.toggle("is-active");
+  //       chip.classList.contains("is-active") ? activeFilters.tipo.add(t) : activeFilters.tipo.delete(t);
+  //       renderMarkers(map);
+  //     });
+  //   });
+
+
+
+  //   $("#btn-heatmap")?.addEventListener("click", () => {
+  //     if (window.__sentinelaMap) {
+  //       toggleHeatmap(window.__sentinelaMap);
+  //     }
+  //   });
+
+
+  //   let modoRegistro = false;
+  //   $("#btn-registrar")?.addEventListener("click", () => {
+  //     modoRegistro = !modoRegistro;
+
+  //     if (modoRegistro) {
+
+  //       $("#btn-registrar").classList.remove("btn--primary");
+  //       $("#btn-registrar").classList.add("btn--soft");
+  //       $("#btn-registrar").innerHTML = `${icon("pin", 18)} Clique no mapa para selecionar o local`;
+  //       map.getDiv().style.cursor = "crosshair";
+  //       showToast("Clique no mapa para selecionar o local da ocorrência");
+  //     } else {
+
+  //       $("#btn-registrar").classList.add("btn--primary");
+  //       $("#btn-registrar").classList.remove("btn--soft");
+  //       $("#btn-registrar").innerHTML = `${icon("pin", 18)} Registrar ocorrência`;
+  //       map.getDiv().style.cursor = "";
+
+
+  //       if (marcadorTemporario) {
+  //         marcadorTemporario.setMap(null);
+  //         marcadorTemporario = null;
+  //       }
+  //       coordenadasSelecionadas = null;
+  //     }
+  //   });
+
+
+  //   map.addListener("click", (e) => {
+  //     if (!modoRegistro) return;
+
+
+  //     const lat = e.latLng.lat();
+  //     const lng = e.latLng.lng();
+
+
+  //     if (marcadorTemporario) {
+  //       marcadorTemporario.setMap(null);
+  //     }
+
+
+  //     coordenadasSelecionadas = { lat, lng };
+  //     marcadorTemporario = new google.maps.Marker({
+  //       position: { lat, lng },
+  //       map: map,
+  //       icon: {
+  //         path: google.maps.SymbolPath.CIRCLE,
+  //         scale: 12,
+  //         fillColor: "#3b82f6",
+  //         fillOpacity: 0.6,
+  //         strokeColor: "#1d4ed8",
+  //         strokeWeight: 2,
+  //       },
+  //       title: "Local selecionado",
+  //     });
+
+
+  //     abrirModalRegistro(lat, lng);
+
+
+  //     modoRegistro = false;
+  //     $("#btn-registrar").classList.add("btn--primary");
+  //     $("#btn-registrar").classList.remove("btn--soft");
+  //     $("#btn-registrar").innerHTML = `${icon("pin", 18)} Registrar ocorrência`;
+  //     map.getDiv().style.cursor = "";
+  //   });
+  // }
+
   function initMapa() {
     console.log("🗺️ Iniciando mapa...");
     const DATA = window.SENTINELA_DATA;
     if (!DATA) {
-      console.error(" Dados não carregados");
+      console.error("❌ Dados não carregados");
       setTimeout(initMapa, 500);
       return;
     }
-
 
     if (DATA.tipos && activeFilters.tipo.size === 0) {
       activeFilters.tipo = new Set(DATA.tipos.map(t => String(t.id)));
@@ -1269,25 +1418,84 @@
 
     const mapElement = document.getElementById("map");
     if (!mapElement) {
-      console.error(" Elemento #map não encontrado");
+      console.error("❌ Elemento #map não encontrado");
       setTimeout(initMapa, 500);
       return;
     }
 
-
     if (window.__sentinelaMap) {
-      console.log("️ Mapa já existe, atualizando marcadores...");
+      console.log("ℹ️ Mapa já existe, atualizando marcadores...");
       renderMarkers(window.__sentinelaMap);
       return;
     }
 
-    console.log(" Criando mapa em:", DATA.center);
+    console.log("📍 Criando mapa em:", DATA.center);
     const map = new google.maps.Map(mapElement, {
       center: { lat: DATA.center[0], lng: DATA.center[1] },
       zoom: DATA.zoom
     });
     window.__sentinelaMap = map;
     console.log("✅ Mapa criado com sucesso!");
+
+
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const userLocation = {
+            lat: position.coords.latitude,
+            lng: position.coords.longitude
+          };
+
+          map.setCenter(userLocation);
+          map.setZoom(15);
+
+
+          new google.maps.Marker({
+            position: userLocation,
+            map: map,
+            title: "Sua localização",
+            icon: {
+              path: google.maps.SymbolPath.CIRCLE,
+              scale: 10,
+              fillColor: "#17b8a6",
+              fillOpacity: 0.85,
+              strokeColor: "#ffffff",
+              strokeWeight: 2,
+            },
+          });
+
+          showToast("📍 Mapa centralizado na sua localização!");
+        },
+        // (error) => {
+        //   console.error("❌ Erro ao obter localização do usuário:", error);
+
+
+        //   map.setCenter({ lat: DATA.center[0], lng: DATA.center[1] });
+        //   map.setZoom(DATA.zoom);
+
+        //   if (error.code === error.PERMISSION_DENIED) {
+        //     showToast("⚠️ Permissão de localização negada. Usando localização padrão.");
+        //   } else {
+        //     showToast("⚠️ Não foi possível obter sua localização. Usando localização padrão.");
+        //   }
+        // },
+        (error) => {
+          console.warn("️ Localização não obtida:", error.message);
+
+
+          map.setCenter({ lat: DATA.center[0], lng: DATA.center[1] });
+          map.setZoom(DATA.zoom);
+
+
+        },
+        { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
+      );
+    } else {
+      console.warn("⚠️ Geolocalização não suportada pelo navegador");
+      map.setCenter({ lat: DATA.center[0], lng: DATA.center[1] });
+      map.setZoom(DATA.zoom);
+      showToast("⚠️ Geolocalização não suportada. Usando localização padrão.");
+    }
 
 
     setTimeout(() => {
@@ -1315,10 +1523,23 @@
     });
 
 
-    
+    // $("#btn-heatmap")?.addEventListener("click", () => {
+    //   if (window.__sentinelaMap) {
+    //     toggleHeatmap(window.__sentinelaMap);
+    //   }
+    // });
+
+
     $("#btn-heatmap")?.addEventListener("click", () => {
       if (window.__sentinelaMap) {
         toggleHeatmap(window.__sentinelaMap);
+      }
+    });
+
+
+    $("#btn-mylocation")?.addEventListener("click", () => {
+      if (window.__sentinelaMap) {
+        centralizarNaLocalizacaoUsuario(window.__sentinelaMap);
       }
     });
 
@@ -1389,6 +1610,62 @@
       $("#btn-registrar").innerHTML = `${icon("pin", 18)} Registrar ocorrência`;
       map.getDiv().style.cursor = "";
     });
+  }
+
+  function centralizarNaLocalizacaoUsuario(map) {
+    if (!navigator.geolocation) {
+      showToast("️ Geolocalização não suportada pelo navegador");
+      return;
+    }
+
+    showToast("📍 Buscando sua localização...");
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const userLocation = {
+          lat: position.coords.latitude,
+          lng: position.coords.longitude
+        };
+
+        map.setCenter(userLocation);
+        map.setZoom(15);
+
+       
+        if (window.userLocationMarker) {
+          window.userLocationMarker.setMap(null);
+        }
+
+        
+        window.userLocationMarker = new google.maps.Marker({
+          position: userLocation,
+          map: map,
+          title: "Sua localização",
+          zIndex: 9999, 
+          icon: {
+            path: google.maps.SymbolPath.CIRCLE,
+            scale: 9, 
+            fillColor: "#4285F4", 
+            fillOpacity: 1,
+            strokeColor: "#ffffff", 
+            strokeWeight: 3,
+          },
+        });
+
+        showToast("✅ Mapa centralizado na sua localização!");
+      },
+      (error) => {
+        console.warn("️ Localização negada ou indisponível:", error.message);
+
+        if (error.code === error.PERMISSION_DENIED) {
+          showToast("❌ Localização negada. Clique no botão novamente e permita o acesso.");
+        } else if (error.code === error.POSITION_UNAVAILABLE) {
+          showToast("⚠️ Localização indisponível. Verifique suas configurações.");
+        } else if (error.code === error.TIMEOUT) {
+          showToast("⏱️ Tempo esgotado. Tente novamente.");
+        }
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+    );
   }
 
   function initDenuncia() {
@@ -2037,7 +2314,7 @@
     });
   }
 
- 
+
   function render() {
     const { path, params } = parseHash();
     let html = "";
@@ -2070,7 +2347,7 @@
       if (path === "login") initLogin();
       if (path === "painel") initPainel();
 
-      
+
       if (path === "inicio") {
         setTimeout(() => { initAlertasTempoReal(); }, 100);
       }
@@ -2100,10 +2377,10 @@
       alerta.addEventListener("click", () => {
         const ocorrenciaId = Number(alerta.dataset.ocorrencia);
 
-       
+
         window.location.hash = "#/mapa";
 
-       
+
         setTimeout(() => {
           const DATA = window.SENTINELA_DATA;
           const map = window.__sentinelaMap;
@@ -2112,11 +2389,11 @@
             const ocorrencia = DATA.ocorrencias.find((o) => o.id === ocorrenciaId);
 
             if (ocorrencia) {
-             
+
               map.panTo({ lat: ocorrencia.lat, lng: ocorrencia.lng });
               map.setZoom(16);
 
-             
+
               const marker = mapMarkers.find((m) => m._occId === ocorrenciaId);
               if (marker) {
                 setTimeout(() => {
