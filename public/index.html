@@ -9,7 +9,7 @@
   <meta name="theme-color" content="#0b1220" />
   <title>Sentinela — Segurança Pública Colaborativa</title>
 
-  
+
   <link rel="icon" href="/img/logo_noite.png" type="image/png" id="favicon" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -26,6 +26,7 @@
 <body>
 
   <header class="header" id="topo">
+
     <div class="header__inner">
       <a href="#/inicio" class="brand" data-nav aria-label="Sentinela - início">
         <span class="brand__mark" aria-hidden="true">
@@ -34,15 +35,15 @@
         </span>
         <span class="brand__name">Sentinela</span>
       </a>
-     
+
 
       <nav class="nav" aria-label="Navegação principal">
-        <a href="#/inicio" class="nav__link" data-nav data-route="inicio">Início</a>
-        <a href="#/mapa" class="nav__link" data-nav data-route="mapa">Mapa</a>
-        <a href="#/dashboard" class="nav__link" data-nav data-route="dashboard">Dashboard</a>
-        <a href="#/previsao" class="nav__link" data-nav data-route="previsao">Previsões</a>
-        <a href="#/denuncias" class="nav__link" data-nav data-route="denuncias">Denúncias</a>
-        <a href="#/acompanhar" class="nav__link" data-nav data-route="acompanhar">Acompanhar</a>
+        <a href="#/inicio" class="nav__link" data-nav data-route="inicio" data-i18n="titulo_nav_inicio">Início</a>
+        <a href="#/mapa" class="nav__link" data-nav data-route="mapa" data-i18n="titulo_nav_mapa">Mapa</a>
+        <a href="#/dashboard" class="nav__link" data-nav data-route="dashboard" data-i18n="titulo_nav_dashboard">Dashboard</a>
+        <a href="#/previsao" class="nav__link" data-nav data-route="previsao" data-i18n="titulo_nav_previsoes">Previsões</a>
+        <a href="#/denuncias" class="nav__link" data-nav data-route="denuncias" data-i18n="titulo_nav_denuncias">Denúncias</a>
+        <a href="#/acompanhar" class="nav__link" data-nav data-route="acompanhar" data-i18n="titulo_nav_acompanhar">Acompanhar</a>
       </nav>
 
       <div class="header__actions">
@@ -59,7 +60,7 @@
             <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z" />
           </svg>
         </button>
-        <a href="#/denuncias" class="btn btn--primary btn--sm" data-nav>Fazer denúncia</a>
+        <a href="#/denuncias" class="btn btn--primary btn--sm" data-nav data-i18n="titulo_btn_denuncia">Fazer denúncia</a>
         <button class="icon-btn nav-toggle" id="nav-toggle" type="button" aria-label="Abrir menu" aria-expanded="false">
           <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2"
             stroke-linecap="round">
@@ -76,6 +77,18 @@
       <a href="#/denuncias" class="nav-mobile__link" data-nav>Denúncias Anônimas</a>
       <a href="#/acompanhar" class="nav-mobile__link" data-nav>Acompanhar</a>
     </nav>
+
+    <div class="language-switcher"
+      style="position: fixed; top: 80px; right: 20px; z-index: 1000; display: flex; gap: 8px; background: rgba(255,255,255,0.1); padding: 8px; border-radius: 8px; backdrop-filter: blur(4px);">
+      <img onclick="setLanguage('pt')" style="cursor: pointer; border-radius: 4px; transition: transform 0.2s;"
+        src="https://flagicons.lipis.dev/flags/4x3/br.svg" alt="Português" width="28" height="20" title="Português">
+      <img onclick="setLanguage('en')" style="cursor: pointer; border-radius: 4px; transition: transform 0.2s;"
+        src="https://flagicons.lipis.dev/flags/4x3/us.svg" alt="English" width="28" height="20" title="English">
+      <img onclick="setLanguage('es')" style="cursor: pointer; border-radius: 4px; transition: transform 0.2s;"
+        src="https://flagicons.lipis.dev/flags/4x3/es.svg" alt="Español" width="28" height="20" title="Español">
+      <img onclick="setLanguage('fr')" style="cursor: pointer; border-radius: 4px; transition: transform 0.2s;"
+        src="https://flagicons.lipis.dev/flags/4x3/fr.svg" alt="Français" width="28" height="20" title="Français">
+    </div>
 
 
   </header>
@@ -95,7 +108,7 @@
           <p class="footer__desc">Segurança pública colaborativa e denúncias protegidas.</p>
         </div>
       </div>
-    
+
       <div>
         <a href="#/login" style="color: var(--text-faint); font-size: 0.82rem; text-decoration: underline;">Acesso
           Restrito</a>
