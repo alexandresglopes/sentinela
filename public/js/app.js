@@ -17,9 +17,6 @@
   const activeFilters = { sev: new Set(["alto", "medio", "baixo"]), tipo: new Set() };
   let chatInvestigadorAtual = { id: null, codigo: null };
 
-  // ==========================================
-  // SISTEMA DE TRADUÇÃO (I18N) - EXPANDIDO
-  // ==========================================
   const translations = {
     pt: {
       titulo_nav_inicio: "Início",
